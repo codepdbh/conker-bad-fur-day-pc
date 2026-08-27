@@ -1,0 +1,17 @@
+binutils-mips-linux-gnu
+build-essential
+cmake
+gcc-mingw-w64-x86-64
+g++-mingw-w64-x86-64
+gdb
+git
+less
+libglib2.0
+libsdl2-dev
+ninja-build
+python-is-python3
+python3
+python3-pip
+python3-venv
+unzip
+wget

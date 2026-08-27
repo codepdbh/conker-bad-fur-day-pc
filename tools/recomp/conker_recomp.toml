@@ -1,0 +1,32 @@
+# Configuration file for N64Recomp targeting Conker's Bad Fur Day (US)
+
+[input]
+elf_path = "../../conker/build/conker.us.elf"
+rom_file_path = "../../build/conker.us.z64"
+output_func_path = "../../recomp/src/recompiled"
+entrypoint = 0x10001000
+use_absolute_symbols = true
+functions_per_output_file = 100
+recomp_include = "#include \"recomp.h\""
+unpaired_lo16_warnings = false
+uses_mips3_float_mode = false
+
+[[input.function_sizes]]
+name = "func_150A3A70"
+size = 0x18E4
+
+[[input.function_sizes]]
+name = "func_150ADAF0"
+size = 0x86C
+
+[patches]
+stubs = [
+    "func_100077B8",
+    "func_10007A38",
+    "func_100071D0"
+]
+ignored = [
+    "func_150AE280"
+]
+
+

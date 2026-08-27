@@ -1,0 +1,62 @@
+# Build directories
+build/
+build_win/
+recomp/build_win/
+recomp/build/
+bin/
+junk/
+extracted/
+rzip/
+expected/
+
+# Compiled binaries and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.ninja_*
+.ninja_*
+ninja.log
+compile_commands.json
+
+# ROM and binary dump files
+*.z64
+*.n64
+*.v64
+*.rom
+*.sav
+*.fla
+*.sra
+baserom.*
+baserom/
+.baserom.*
+
+# Screenshots and media artifacts
+*.bmp
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.webm
+
+# Temporary and cache files
+.temp/
+__pycache__/
+*.pyc
+.splat_cache
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/
+.idea/
+.vs/
+
+# Permuter / Scratch
+tools/decomp-permuter/
+tools/gfxdis/
+conker/ctx.c
