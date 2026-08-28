@@ -77,7 +77,7 @@ if ($foundHwnd -ne [IntPtr]::Zero) {
         [WinProcFinder]::BitBlt($hdcDest, 0, 0, $w, $h, $hdcSrc, 0, 0, 0x00CC0020) | Out-Null
         
         $img = [System.Drawing.Image]::FromHbitmap($hBitmap)
-        $dest = "C:\Users\danie\.gemini\antigravity-ide\brain\15a71f62-4139-43e3-8c63-3b39a44347f7\conker_rt64_vulkan_frame.png"
+        $dest = "C:\Users\danie\.gemini\antigravity-ide\brain\3d45c223-63c2-4893-a4ea-4e24a0015876\conker_screenshot.png"
         $img.Save($dest, [System.Drawing.Imaging.ImageFormat]::Png)
         $img.Dispose()
         

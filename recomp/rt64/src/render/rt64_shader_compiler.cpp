@@ -20,14 +20,12 @@ namespace RT64 {
     static const GUID CLSID_DxcLinker_Guid = { 0xef6a808e, 0xb0cc, 0x4d56, { 0xa4, 0x45, 0x5c, 0x3c, 0x66, 0x72, 0x04, 0xcd } };
 
     static DxcCreateInstanceProc GetDxcCreateInstance() {
-        static HMODULE hDxc = LoadLibraryA("dxcompiler.dll");
-        if (hDxc == nullptr) {
-            return nullptr;
-        }
-        return (DxcCreateInstanceProc)GetProcAddress(hDxc, "DxcCreateInstance");
+        return nullptr;
     }
 
     ShaderCompiler::ShaderCompiler() {
+        dxcCompiler = nullptr;
+        dxcUtils = nullptr;
         DxcCreateInstanceProc createProc = GetDxcCreateInstance();
         if (createProc == nullptr) {
             return;
@@ -35,12 +33,14 @@ namespace RT64 {
 
         HRESULT res = createProc(CLSID_DxcCompiler_Guid, IID_IDxcCompiler_Guid, (void **)(&dxcCompiler));
         if (FAILED(res)) {
+            dxcCompiler = nullptr;
             fprintf(stderr, "DxcCreateInstance(DxcCompiler) failed with error code 0x%lX.\n", res);
             return;
         }
 
         res = createProc(CLSID_DxcUtils_Guid, IID_IDxcUtils_Guid, (void **)(&dxcUtils));
         if (FAILED(res)) {
+            dxcUtils = nullptr;
             fprintf(stderr, "DxcCreateInstance(DxcUtils) failed with error code 0x%lX.\n", res);
             return;
         }

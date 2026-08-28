@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -27259,9 +27258,6 @@ L_15088770:
 
 ;}
 RECOMP_FUNC void func_10004514(uint8_t* rdram, recomp_context* ctx) {
-    fprintf(stdout, "[Conker DMA] func_10004514: rom_offset=0x%08X, dest=0x%08X, size=0x%08X, flag=%d\n",
-        (uint32_t)ctx->r4, (uint32_t)ctx->r5, (uint32_t)ctx->r6, (int)ctx->r7);
-    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x10004514: addiu       $sp, $sp, -0x58

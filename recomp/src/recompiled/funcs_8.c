@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -2858,8 +2857,6 @@ L_1000FE70:
     ctx->r29 = ADD32(ctx->r29, 0X28);
 ;}
 RECOMP_FUNC void func_10001194(uint8_t* rdram, recomp_context* ctx) {
-    fprintf(stdout, "[Conker Game] func_10001194 (Thread 3) active.\n");
-    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x10001194: addiu       $sp, $sp, -0x50
@@ -2878,8 +2875,6 @@ RECOMP_FUNC void func_10001194(uint8_t* rdram, recomp_context* ctx) {
     // 0x100011A8: nop
 
     after_0:
-    fprintf(stdout, "[Conker Game] func_10001194 resumed after func_10005218!\n");
-    fflush(stdout);
     // 0x100011AC: lui         $t6, 0x8000
     ctx->r14 = S32(0X8000 << 16);
     // 0x100011B0: lw          $t6, 0x30C($t6)
@@ -2901,8 +2896,6 @@ RECOMP_FUNC void func_10001194(uint8_t* rdram, recomp_context* ctx) {
     // 0x100011C8: jal         0x100226F0
     // 0x100011CC: or          $a1, $s0, $zero
     ctx->r5 = ctx->r16 | 0;
-    fprintf(stdout, "[Conker Game] func_10001194 zeroing BSS (0x%08X, len=0x%08X)...\n", (uint32_t)ctx->r4, (uint32_t)ctx->r5);
-    fflush(stdout);
     bzero_recomp(rdram, ctx);
         goto after_1;
     // 0x100011CC: or          $a1, $s0, $zero
@@ -3061,8 +3054,6 @@ L_100011FC:
     // 0x100012A4: jal         0x10004514
     // 0x100012A8: addiu       $a3, $zero, 0x1
     ctx->r7 = ADD32(0, 0X1);
-    fprintf(stdout, "[Conker Game] Step 1: DMA Asset Table from ROM 0x%08X to RDRAM 0x%08X (size 0x%08X)...\n", (uint32_t)ctx->r4, (uint32_t)ctx->r5, (uint32_t)ctx->r6);
-    fflush(stdout);
     func_10004514(rdram, ctx);
         goto after_12;
     // 0x100012A8: addiu       $a3, $zero, 0x1
@@ -3093,8 +3084,6 @@ L_100011FC:
     // 0x100012D8: jal         0x10003C40
     // 0x100012DC: or          $a3, $zero, $zero
     ctx->r7 = 0 | 0;
-    fprintf(stdout, "[Conker Game] Step 2: Allocate Memory for Main Game Code (size=0x%08X)...\n", (uint32_t)ctx->r4);
-    fflush(stdout);
     allocate_memory(rdram, ctx);
         goto after_13;
     // 0x100012DC: or          $a3, $zero, $zero
@@ -3111,8 +3100,6 @@ L_100011FC:
     // 0x100012F0: jal         0x10004514
     // 0x100012F4: addiu       $a3, $zero, 0x1
     ctx->r7 = ADD32(0, 0X1);
-    fprintf(stdout, "[Conker Game] Step 3: DMA Main Game Overlay (rom=0x%08X, dest=0x%08X, size=0x%08X)...\n", (uint32_t)ctx->r4, (uint32_t)ctx->r5, (uint32_t)ctx->r6);
-    fflush(stdout);
     func_10004514(rdram, ctx);
         goto after_14;
     // 0x100012F4: addiu       $a3, $zero, 0x1
@@ -3205,8 +3192,6 @@ L_100011FC:
     // 0x10001390: jal         0x10004514
     // 0x10001394: addiu       $a3, $zero, 0x1
     ctx->r7 = ADD32(0, 0X1);
-    fprintf(stdout, "[Conker Game] Step 4: DMA Decryption Key Table from ROM 0x%08X...\n", (uint32_t)ctx->r4);
-    fflush(stdout);
     func_10004514(rdram, ctx);
         goto after_17;
     // 0x10001394: addiu       $a3, $zero, 0x1
@@ -3267,8 +3252,6 @@ L_100013E4:
     // 0x100013EC: jal         0x10005B04
     // 0x100013F0: addiu       $a0, $zero, 0xEB
     ctx->r4 = ADD32(0, 0XEB);
-    fprintf(stdout, "[Conker Game] Step 5: Allocating sub-heaps via func_10005B04...\n");
-    fflush(stdout);
     func_10005B04(rdram, ctx);
         goto after_18;
     // 0x100013F0: addiu       $a0, $zero, 0xEB
@@ -3293,8 +3276,6 @@ L_100013E4:
     // 0x10001404: jal         0x15007830
     // 0x10001408: nop
 
-    fprintf(stdout, "[Conker Game] Step 6: ENTERING MAIN GAME LOOP func_15007830!\n");
-    fflush(stdout);
     func_15007830(rdram, ctx);
         goto after_21;
     // 0x10001408: nop
@@ -17308,8 +17289,6 @@ L_151640B4:
 
 ;}
 RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
-    fprintf(stdout, "[Conker Game] Main Game Loop func_15007830 ENTERED!\n");
-    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x15007830: addiu       $sp, $sp, -0x38

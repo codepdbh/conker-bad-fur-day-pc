@@ -105,6 +105,17 @@ extern uint8_t g_mmio_dummy[0x10000];
 static inline uint8_t* get_phys_ptr(uint8_t* rdram, uint32_t addr) {
     uint32_t phys = addr & 0x1FFFFFFF;
     if (phys >= 0x04000000 && phys < 0x04900000) {
+        // Status registers: PI_STATUS (0x04600010), SI_STATUS (0x04800018), DPC_STATUS (0x0410000C), AI_STATUS (0x0450000C)
+        if (phys == 0x04600010 || phys == 0x04800018 || phys == 0x0410000C || phys == 0x0450000C) {
+            static uint32_t zero_reg = 0;
+            zero_reg = 0;
+            return (uint8_t*)&zero_reg;
+        }
+        if (phys == 0x04040010) { // SP_STATUS (SP_STATUS_HALT = 1)
+            static uint32_t sp_halt_reg = 1;
+            sp_halt_reg = 1;
+            return (uint8_t*)&sp_halt_reg;
+        }
         return g_mmio_dummy + (phys & 0xFFFF);
     }
     if (phys >= 0x10000000 && phys < 0x14000000) {

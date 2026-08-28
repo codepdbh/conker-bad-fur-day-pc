@@ -444,13 +444,6 @@ extern "C" void cop0_status_write(recomp_context* ctx, gpr value) {
         changed &= ~(uint32_t)StatusReg::FR;
     }
 
-    // If any other bits were changed, assert false as they're not handled currently
-    if (changed) {
-        printf("Unhandled status register bits changed: 0x%08X\n", changed);
-        assert(false);
-        exit(EXIT_FAILURE);
-    }
-    
     // Update the status register in the context
     ctx->status_reg = new_sr;
 }

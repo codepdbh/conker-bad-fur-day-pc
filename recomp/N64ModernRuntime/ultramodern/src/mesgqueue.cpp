@@ -119,6 +119,8 @@ bool do_send(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, bool jam, bool block) {
         TO_PTR(OSMesg, mq->msg)[(mq->first + mq->validCount) % mq->msgCount] = msg;
     }
     mq->validCount++;
+    fprintf(stdout, "[MQ Send] mq=0x%08X msg=0x%08X (count=%d/%d)\n", (uint32_t)(uintptr_t)mq_, (uint32_t)(uintptr_t)msg, mq->validCount, mq->msgCount);
+    fflush(stdout);
 
     // If any threads were blocked on receiving from this message queue, pop the first one and schedule it.
     PTR(PTR(OSThread)) blocked_queue = GET_MEMBER(OSMesgQueue, mq_, blocked_on_recv);
@@ -153,6 +155,8 @@ bool do_recv(RDRAM_ARG PTR(OSMesgQueue) mq_, PTR(OSMesg) msg_, bool block) {
     
     mq->first = (mq->first + 1) % mq->msgCount;
     mq->validCount--;
+    fprintf(stdout, "[MQ Recv] mq=0x%08X msg=0x%08X (remaining=%d/%d)\n", (uint32_t)(uintptr_t)mq_, (uint32_t)(uintptr_t)(msg_ != NULLPTR ? *TO_PTR(OSMesg, msg_) : 0), mq->validCount, mq->msgCount);
+    fflush(stdout);
 
     // If any threads were blocked on sending to this message queue, pop the first one and schedule it.
     PTR(PTR(OSThread)) blocked_queue = GET_MEMBER(OSMesgQueue, mq_, blocked_on_send);

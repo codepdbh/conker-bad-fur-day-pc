@@ -267,8 +267,8 @@ void ultramodern::join_saving_thread() {
 }
 
 void do_dma(RDRAM_ARG PTR(OSMesgQueue) mq, gpr rdram_address, uint32_t physical_addr, uint32_t size, uint32_t direction) {
-    // TODO asynchronous transfer
-    // TODO implement unaligned DMA correctly
+    fprintf(stdout, "[PI DMA] rom=0x%08X ram=0x%08X size=0x%X dir=%d mq=0x%08X\n", physical_addr, (uint32_t)rdram_address, size, direction, (uint32_t)(uintptr_t)mq);
+    fflush(stdout);
     if (direction == 0) {
         if (physical_addr >= recomp::rom_base) {
             // read cart rom

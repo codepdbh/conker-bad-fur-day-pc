@@ -77,7 +77,7 @@ private:
 public:
     ConkerRendererContext(uint8_t* rdram, HWND hwnd) : m_hwnd(hwnd), m_rdram(rdram) {
         setup_result = ultramodern::renderer::SetupResult::Success;
-        chosen_api = ultramodern::renderer::GraphicsApi::Auto;
+        chosen_api = ultramodern::renderer::GraphicsApi::Vulkan;
         m_pixel_buffer.resize(640 * 480, 0xFF000000);
 
         try {
@@ -109,6 +109,7 @@ public:
             appConfig.useConfigurationFile = false;
 
             m_app = std::make_unique<RT64::Application>(core, appConfig);
+            m_app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Vulkan;
             auto res = m_app->setup(0);
             if (res == RT64::Application::SetupResult::Success) {
                 std::cout << "[Conker RT64] Vulkan 3D Graphics Engine initialized successfully!\n" << std::flush;
@@ -140,7 +141,9 @@ public:
         }
 
         if (m_app) {
-            m_app->processDisplayLists(m_rdram, (uint32_t)(uintptr_t)task->t.data_ptr, (uint32_t)(uintptr_t)task->t.data_ptr + task->t.data_size, true);
+            uint32_t dl_start = ((uint32_t)(uintptr_t)task->t.data_ptr) & 0x00FFFFFF;
+            uint32_t dl_end = (dl_start + task->t.data_size) & 0x00FFFFFF;
+            m_app->processDisplayLists(m_rdram, dl_start, dl_end, true);
         }
     }
 
@@ -149,7 +152,6 @@ public:
     void update_screen() override {
         if (m_app) {
             m_app->updateScreen();
-            return;
         }
 
         if (!m_hwnd) return;
@@ -332,9 +334,18 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[Conker] Loading ROM: " << found_rom << " ...\n" << std::flush;
     static std::vector<uint8_t> rom_data((std::istreambuf_iterator<char>(rom_file)), std::istreambuf_iterator<char>());
+    
+    // Byte-swap ROM (big-endian z64 -> little-endian host words) for N64Recomp memory accesses
+    uint32_t* rom32 = reinterpret_cast<uint32_t*>(rom_data.data());
+    size_t words = rom_data.size() / 4;
+    for (size_t i = 0; i < words; i++) {
+        uint32_t w = rom32[i];
+        rom32[i] = ((w >> 24) & 0xFF) | ((w >> 8) & 0xFF00) | ((w << 8) & 0xFF0000) | ((w << 24) & 0xFF000000);
+    }
+
     g_rom_data = rom_data.data();
     g_rom_size = rom_data.size();
-    std::cout << "[Conker] ROM loaded successfully (" << (rom_data.size() / 1048576) << " MB).\n" << std::flush;
+    std::cout << "[Conker] ROM loaded and byte-swapped successfully (" << (rom_data.size() / 1048576) << " MB).\n" << std::flush;
 
     // Initialize RDRAM and zero memory
     std::memset(rdram, 0, 0x1000000);
@@ -469,6 +480,13 @@ int main(int argc, char* argv[]) {
             if (GetAsyncKeyState('A') & 0x8000) *stick_x -= 1.0f;
 #endif
             return true;
+        },
+        .set_rumble = [](int, bool) {},
+        .get_connected_device_info = [](int controller) -> ultramodern::input::connected_device_info_t {
+            if (controller == 0) {
+                return { ultramodern::input::Device::Controller, ultramodern::input::Pak::RumblePak };
+            }
+            return { ultramodern::input::Device::None, ultramodern::input::Pak::None };
         }
     };
     ultramodern::gfx_callbacks_t gfx_callbacks{};
@@ -506,7 +524,7 @@ int main(int argc, char* argv[]) {
             *(uint32_t*)&rdram_ptr[0x308] = 0; // osRomBase
             *(uint32_t*)&rdram_ptr[0x30C] = 0; // osResetType
             *(uint32_t*)&rdram_ptr[0x310] = 0x17D9; // osCicType: CIC-6105 magic check required by Conker boot
-            *(uint32_t*)&rdram_ptr[0x318] = 0x1000000; // osMemSize: 16 MB
+            *(uint32_t*)&rdram_ptr[0x318] = 0x00800000; // osMemSize: 8 MB
         };
         recomp::register_game(game_entry);
         recomp::start_game(u8"conker", "");

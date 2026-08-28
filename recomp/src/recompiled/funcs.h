@@ -1,8 +1,10 @@
+#pragma once
 #include "recomp.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 void func_150E05F8(uint8_t* rdram, recomp_context* ctx);
 void osPfsInit2(uint8_t* rdram, recomp_context* ctx);

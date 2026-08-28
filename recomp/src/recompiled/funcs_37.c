@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -15245,8 +15244,6 @@ RECOMP_FUNC void func_10005218(uint8_t* rdram, recomp_context* ctx) {
     // 0x10005290: jr          $ra
     // 0x10005294: nop
 
-    fprintf(stdout, "[Conker Game] func_10005218 returning to caller (ra=0x%08X)\n", (uint32_t)ctx->r31);
-    fflush(stdout);
     return;
     return;
     // 0x10005294: nop

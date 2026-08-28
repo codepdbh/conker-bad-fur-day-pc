@@ -39,7 +39,16 @@ typedef uint8_t u8;
 #  define RDRAM_ARG1 uint8_t *rdram
 #  define PASS_RDRAM rdram, 
 #  define PASS_RDRAM1 rdram
-#  define TO_PTR(type, var) (((var) == 0) ? (type*)nullptr : ((type*)(&rdram[((uint32_t)(uintptr_t)(var)) & 0x00FFFFFF])))
+#  ifdef __cplusplus
+template <typename T, typename V>
+inline T* to_ptr_helper(uint8_t* rdram, V var) {
+    uint32_t val = (uint32_t)(uintptr_t)var;
+    return (val == 0) ? nullptr : (T*)(&rdram[val & 0x00FFFFFF]);
+}
+#    define TO_PTR(type, var) to_ptr_helper<type>(rdram, var)
+#  else
+#    define TO_PTR(type, var) (((var) == 0) ? (type*)0 : ((type*)(&rdram[((uint32_t)(uintptr_t)(var)) & 0x00FFFFFF])))
+#  endif
 #  define GET_MEMBER(type, addr, member) (addr + (intptr_t)&(((type*)nullptr)->member))
 #  ifdef __cplusplus
 #    define NULLPTR (PTR(void))0

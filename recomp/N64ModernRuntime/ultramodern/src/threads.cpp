@@ -205,6 +205,7 @@ void run_next_thread(RDRAM_ARG1) {
         throw std::runtime_error("No threads left to run!\n");
     }
 
+
     OSThread* self = ultramodern::this_thread() ? TO_PTR(OSThread, ultramodern::this_thread()) : nullptr;
     OSThread* to_run = TO_PTR(OSThread, ultramodern::thread_queue_pop(PASS_RDRAM ultramodern::running_queue));
     UltraThreadContext* ctx = get_thread_context(to_run);
@@ -352,12 +353,19 @@ extern "C" void osStopThread(RDRAM_ARG PTR(OSThread) t_) {
     if (t_ == NULLPTR) {
         t_ = thread_self;
     }
+    OSThread* t = TO_PTR(OSThread, t_);
+    if (!t) return;
+
     // Check if the thread is stopping itself (arg is null or thread_self).
     if (t_ == thread_self) {
+        t->state = OSThreadState::STOPPED;
         ultramodern::run_next_thread_and_wait(PASS_RDRAM1);
     }
     else {
-        assert(false);
+        if (t->state != OSThreadState::STOPPED) {
+            ultramodern::thread_queue_remove(PASS_RDRAM t->queue, t_);
+            t->state = OSThreadState::STOPPED;
+        }
     }
 }
 

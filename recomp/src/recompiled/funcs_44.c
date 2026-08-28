@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -12944,8 +12943,6 @@ L_1517E474:
     ctx->r29 = ADD32(ctx->r29, 0X78);
 ;}
 RECOMP_FUNC void allocate_memory(uint8_t* rdram, recomp_context* ctx) {
-    fprintf(stdout, "[Conker Memory] allocate_memory: size=0x%08X, unk=0x%08X, unk2=0x%08X\n", (uint32_t)ctx->r4, (uint32_t)ctx->r5, (uint32_t)ctx->r6);
-    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x10003C40: addiu       $sp, $sp, -0x20
@@ -12966,8 +12963,6 @@ RECOMP_FUNC void allocate_memory(uint8_t* rdram, recomp_context* ctx) {
     // 0x10003C58: sw          $t6, 0x10($sp)
     MEM_W(0X10, ctx->r29) = ctx->r14;
     after_0:
-    fprintf(stdout, "[Conker Memory] allocate_memory -> allocated ptr=0x%08X\n", (uint32_t)ctx->r2);
-    fflush(stdout);
     // 0x10003C5C: lw          $ra, 0x1C($sp)
     ctx->r31 = MEM_W(ctx->r29, 0X1C);
     // 0x10003C60: addiu       $sp, $sp, 0x20

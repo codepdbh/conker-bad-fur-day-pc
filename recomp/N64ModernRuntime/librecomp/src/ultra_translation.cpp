@@ -123,7 +123,7 @@ extern "C" void osSetIntMask_recomp(uint8_t * rdram, recomp_context * ctx) {
 }
 
 extern "C" void __osDisableInt_recomp(uint8_t * rdram, recomp_context * ctx) {
-    ;
+    ctx->r2 = 1;
 }
 
 extern "C" void __osRestoreInt_recomp(uint8_t * rdram, recomp_context * ctx) {

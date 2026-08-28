@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -11620,8 +11619,6 @@ L_150807E8:
 
 ;}
 RECOMP_FUNC void func_100052A0(uint8_t* rdram, recomp_context* ctx) {
-    fprintf(stdout, "[Conker Thread 21] func_100052A0 entered, waiting for reset message...\n");
-    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x100052A0: addiu       $sp, $sp, -0x50
