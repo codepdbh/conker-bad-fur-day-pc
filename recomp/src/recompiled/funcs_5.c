@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -5239,6 +5240,7 @@ L_150188F4:
     // 0x150188F4: jal         0x1501905C
     // 0x150188F8: nop
 
+    printf("[Conker Frame] func_150186D0 entered\n"); fflush(stdout);
     func_1501905C(rdram, ctx);
         goto after_9;
     // 0x150188F8: nop
@@ -5259,6 +5261,7 @@ L_150188F4:
     // 0x1501890C: jal         0x15019130
     // 0x15018910: nop
 
+    printf("[Conker Frame] calling func_15019130...\n"); fflush(stdout);
     func_15019130(rdram, ctx);
         goto after_10;
     // 0x15018910: nop
@@ -5268,6 +5271,7 @@ L_150188F4:
     if (ctx->r2 == 0) {
         // 0x15018918: lui         $s1, 0x800C
         ctx->r17 = S32(0X800C << 16);
+        printf("[Conker Frame] func_15019130 returned 0 (skipping frame)\n"); fflush(stdout);
             goto L_15018DD8;
     }
 L_15018918:
@@ -5278,6 +5282,7 @@ L_15018918:
     // 0x15018920: jal         0x1501A680
     // 0x15018924: lw          $a0, 0x0($s1)
     ctx->r4 = MEM_W(ctx->r17, 0X0);
+    printf("[Conker Frame] calling func_1501A680...\n"); fflush(stdout);
     func_1501A680(rdram, ctx);
         goto after_11;
     // 0x15018924: lw          $a0, 0x0($s1)
@@ -6174,6 +6179,7 @@ L_15018DDC:
     // 0x15018DF4: jr          $ra
     // 0x15018DF8: addiu       $sp, $sp, 0x68
     ctx->r29 = ADD32(ctx->r29, 0X68);
+    printf("[Conker Frame] func_150186D0 returning successfully!\n"); fflush(stdout);
     return;
     return;
     // 0x15018DF8: addiu       $sp, $sp, 0x68

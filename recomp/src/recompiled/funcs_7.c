@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -24615,7 +24616,7 @@ L_15019210:
     }
     // 0x1501923C: nop
 
-L_15019240:
+    L_15019240:
     // 0x15019240: jal         0x1510FC34
     // 0x15019244: sw          $a0, 0x24($sp)
     MEM_W(0X24, ctx->r29) = ctx->r4;

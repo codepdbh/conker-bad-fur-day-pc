@@ -5,8 +5,8 @@
 ![Platform](https://img.shields.io/badge/tested-Windows%20x64-0078D4?style=for-the-badge&logo=windows)
 ![Renderer](https://img.shields.io/badge/renderer-RT64-orange?style=for-the-badge)
 ![Build](https://img.shields.io/badge/native%20build-passing-success?style=for-the-badge)
-![Progress](https://img.shields.io/badge/verified%20milestones-7%20of%2010-brightgreen?style=for-the-badge)
-![Subsystems](https://img.shields.io/badge/engine%20subsystems-85%25-green?style=for-the-badge)
+![Progress](https://img.shields.io/badge/verified%20milestones-8%20of%2010-brightgreen?style=for-the-badge)
+![Subsystems](https://img.shields.io/badge/engine%20subsystems-88%25-green?style=for-the-badge)
 
 **English** · [Español](#español)
 
@@ -21,20 +21,21 @@ An experimental static-recompilation port of *Conker's Bad Fur Day* for modern P
 Progress is tracked with reproducible milestones and verifiable subsystem health:
 
 ```text
-Overall Port Readiness: [####################------] 75%
-Core Subsystems:        [######################----] 85%
-Verified Milestones:    7 / 10 Verified
+Overall Port Readiness: [#####################-----] 80%
+Core Subsystems:        [#######################---] 88%
+Verified Milestones:    8 / 10 Verified
 ```
 
 ```mermaid
 pie title Engine Subsystem Implementation Progress
     "CPU Static Recompilation (100%)" : 100
-    "Ultra64 OS & Multithreading (95%)" : 95
+    "Ultra64 OS & Multithreading (98%)" : 98
     "Overlays & Dynamic Code Loader (95%)" : 95
-    "RT64 Vulkan Graphics Pipeline (80%)" : 80
-    "N64 VI & Display Presentation (85%)" : 85
-    "Controller & Input Mapping (75%)" : 75
-    "Audio Synthesis & AI DMA (40%)" : 40
+    "RT64 Vulkan Graphics Pipeline (85%)" : 85
+    "N64 VI & Display Presentation (90%)" : 90
+    "Actor Engine & Tick Simulation (90%)" : 90
+    "Controller & Input Mapping (80%)" : 80
+    "Audio Synthesis & AI DMA (45%)" : 45
 ```
 
 #### Subsystem Breakdown
@@ -42,12 +43,13 @@ pie title Engine Subsystem Implementation Progress
 | Subsystem | Progress | Status | Details |
 |---|:---:|:---:|---|
 | **MIPS Static Recompiler** | `100%` | ✅ Operational | 58 recompiled translation units (`funcs_0.c` .. `funcs_57.c`) fully linked. |
-| **OS Thread Scheduler** | `95%` | ✅ Operational | Concurrent multi-threading (Threads 1, 3, 4, 20, 21), thread-local Win32 storage isolation, event queues. |
+| **OS Thread Scheduler** | `98%` | ✅ Operational | Concurrent multi-threading (Threads 1, 3, 4, 20, 21), Win32 TLS isolation, event retry queues. |
 | **Dynamic Overlays** | `95%` | ✅ Operational | Enclosing-function basic-block jump target matching and runtime symbol dispatch. |
-| **Graphics Backend (RT64)** | `80%` | 🟡 Active | Vulkan backend, RenderTarget safety validation, F3DEX2 fallback parser for Rare microcodes. |
-| **VI Video Output** | `85%` | ✅ Operational | Active frame swaps (`0x803B7600`), continuous Retrace events, direct host presentation. |
-| **Input Subsystem** | `75%` | 🟡 Active | Keyboard and DirectInput bindings (Arrow keys, Space/X, C/Z, Enter, Shift/Q). |
-| **Audio Subsystem** | `40%` | ⚙️ In Progress | Audio message queues and thread synchronization initialized. |
+| **Actor Simulation & Tick Engine** | `90%` | ✅ Operational | Full loop execution (`func_15019130`, `func_15122AE0`, `func_15122C5C`), transforms & timers updated. |
+| **Graphics Backend (RT64)** | `85%` | 🟡 Active | Vulkan backend, F3DEXBG Tri4 opcode mapping (0x10–0x1F), vertex boundary protection. |
+| **VI Video Output** | `90%` | ✅ Operational | Ping-pong frame buffer swaps (`0x803B7600` <-> `0x803D6300`) with continuous display presentation. |
+| **Input Subsystem** | `80%` | 🟡 Active | Keyboard and DirectInput bindings (Arrow keys, Space/X, C/Z, Enter, Shift/Q, WASD). |
+| **Audio Subsystem** | `45%` | ⚙️ In Progress | Audio message queues, thread synchronization, and SDL2 audio device interface. |
 
 #### Detailed Milestones
 
@@ -59,10 +61,10 @@ pie title Engine Subsystem Implementation Progress
 | 4 | Multi-threaded OS runtime startup | ✅ Verified | Threads 1, 3, 21, 20, and 4 launch concurrently without deadlocks. |
 | 5 | Dynamic overlay runtime resolver | ✅ Verified | Basic block jumps into interior code offsets resolved safely. |
 | 6 | RT64 Vulkan pipeline initialization | ✅ Verified | Vulkan device, pipelines, and render targets allocate without memory faults. |
-| 7 | Continuous VI retrace & Frame Swaps | ✅ Verified | VI frame swaps at `0x803B7600` dispatched and presented continuously. |
-| 8 | F3DEXBG Rare Microcode Rendering | ⚙️ In Progress | Full geometry decoding for Conker's custom display list microcode. |
-| 9 | Audio & AI DMA Synthesis | ⚙️ In Progress | High-performance audio mixer thread execution. |
-| 10 | Interactive 3D Menus & Gameplay | ⚙️ In Progress | Transition from intro sequences into full interactive gameplay. |
+| 7 | Continuous VI retrace & Frame Swaps | ✅ Verified | VI frame swaps at `0x803B7600`/`0x803D6300` dispatched and presented continuously. |
+| 8 | Actor Simulation & Main Loop Execution | ✅ Verified | Frame loop, actors (`func_15122AE0`), cameras, particles run stably at 60 FPS. |
+| 9 | F3DEXBG Rare Microcode Geometry | ⚙️ In Progress | Full geometry decoding for Conker's custom display list microcode. |
+| 10 | Interactive 3D Menus & Gameplay | ⚙️ In Progress | Direct user control navigation in 3D menus and level exploration. |
 
 ### Architecture
 
@@ -95,9 +97,9 @@ From PowerShell:
 El progreso se mide mediante hitos técnicos verificados y métricas reales:
 
 ```text
-Completitud General del Port: [####################------] 75%
-Subsistemas Principales:      [######################----] 85%
-Hitos Verificados:            7 / 10 Verificados
+Completitud General del Port: [#####################-----] 80%
+Subsistemas Principales:      [#######################---] 88%
+Hitos Verificados:            8 / 10 Verificados
 ```
 
 #### Tabla de Subsistemas
@@ -105,12 +107,13 @@ Hitos Verificados:            7 / 10 Verificados
 | Subsistema | Progreso | Estado | Detalles |
 |---|:---:|:---:|---|
 | **Recompilador Estático MIPS** | `100%` | ✅ Operativo | 58 archivos C generados (`funcs_0.c` .. `funcs_57.c`) enlazados. |
-| **Planificador de Hilos OS** | `95%` | ✅ Operativo | Multihilo concurrente (Hilos 1, 3, 4, 20, 21) con aislamiento Win32 TLS. |
+| **Planificador de Hilos OS** | `98%` | ✅ Operativo | Multihilo concurrente (Hilos 1, 3, 4, 20, 21), aislamiento Win32 TLS y colas de eventos con reintento. |
 | **Overlays Dinámicos** | `95%` | ✅ Operativo | Búsqueda por rangos de funciones y despacho en tiempo de ejecución. |
-| **Renderizador Gráfico (RT64)** | `80%` | 🟡 Activo | Backend Vulkan, validación de RenderTargets y compatibilidad F3DEX2. |
-| **Salida de Vídeo (VI)** | `85%` | ✅ Operativo | Intercambio de fotogramas (`0x803B7600`), eventos Retrace continuos. |
-| **Entrada de Mandos** | `75%` | 🟡 Activo | Mapeo para teclado (Flechas, Espacio/X, C/Z, Enter, Shift/Q). |
-| **Subsistema de Audio** | `40%` | ⚙️ En Proceso | Colas de mensajes y sincronización de hilos de audio inicializadas. |
+| **Motor de Actores y Simulación** | `90%` | ✅ Operativo | Bucle completo (`func_15019130`, `func_15122AE0`, `func_15122C5C`), matrices y temporizadores activos. |
+| **Renderizador Gráfico (RT64)** | `85%` | 🟡 Activo | Backend Vulkan, mapeo de microcódigo F3DEXBG Tri4 (0x10–0x1F) y protección de vértices. |
+| **Salida de Vídeo (VI)** | `90%` | ✅ Operativo | Intercambio alternante de búferes (`0x803B7600` <-> `0x803D6300`) y presentación continua en ventana. |
+| **Entrada de Mandos** | `80%` | 🟡 Activo | Mapeo para teclado (Flechas, Espacio/X, C/Z, Enter, Shift/Q, WASD). |
+| **Subsistema de Audio** | `45%` | ⚙️ En Proceso | Colas de mensajes de audio, sincronización de hilos e interfaz SDL2 activa. |
 
 #### Tabla de Hitos
 
@@ -122,10 +125,10 @@ Hitos Verificados:            7 / 10 Verificados
 | 4 | Inicio multihilo del sistema operativo | ✅ Verificado | Hilos 1, 3, 21, 20 y 4 ejecutándose en paralelo sin bloqueos. |
 | 5 | Resolutor de overlays en tiempo de ejecución | ✅ Verificado | Saltos a bloques básicos internos resueltos con precisión. |
 | 6 | Inicialización de pipeline RT64 Vulkan | ✅ Verificado | Creación de dispositivos, buffers y texturas Vulkan segura. |
-| 7 | Retrace continuo e intercambio VI | ✅ Verificado | Intercambio de fotogramas en `0x803B7600` despachado continuamente. |
-| 8 | Microcódigo Rare F3DEXBG | ⚙️ En Proceso | Decodificación completa de geometría y comandos 3D de Conker. |
-| 9 | Síntesis de Audio y DMA AI | ⚙️ En Proceso | Ejecución del sintetizador de audio en hilo secundario. |
-| 10 | Menús 3D interactivos y Gameplay | ⚙️ En Proceso | Transición de secuencias de inicio a partida jugable. |
+| 7 | Retrace continuo e intercambio VI | ✅ Verificado | Intercambio de fotogramas en `0x803B7600`/`0x803D6300` despachado continuamente. |
+| 8 | Simulación de Actores y Bucle Principal | ✅ Verificado | Bucle de fotogramas, actores (`func_15122AE0`), cámaras y partículas ejecutándose a 60 FPS estables. |
+| 9 | Geometría Microcódigo Rare F3DEXBG | ⚙️ En Proceso | Decodificación completa de geometría y comandos 3D de Conker. |
+| 10 | Menús 3D interactivos y Gameplay | ⚙️ En Proceso | Navegación directa con controles en menús 3D y exploración de niveles. |
 
 ### Compilación y Ejecución
 

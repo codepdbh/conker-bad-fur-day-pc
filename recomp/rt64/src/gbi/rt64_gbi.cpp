@@ -396,6 +396,31 @@ namespace RT64 {
     GBI *GBIManager::getGBIForUCode(uint8_t *RDRAM, uint32_t textAddress, uint32_t dataAddress) {
         assert(RDRAM != nullptr);
 
+        auto getF3DEXBGFallback = [&]() -> GBI * {
+            // Ucode data is stored in N64 byte order. Detect Rare's identifying
+            // string so task loads and in-display-list G_LOAD_UCODE agree.
+            constexpr char signature[] = "F3DEXBG";
+            uint8_t dataBytes[0x800];
+            for (size_t i = 0; i < std::size(dataBytes); i++) {
+                dataBytes[i] = RDRAM[(dataAddress + uint32_t(i)) ^ 0x3];
+            }
+
+            const auto found = std::search(std::begin(dataBytes), std::end(dataBytes),
+                std::begin(signature), std::end(signature) - 1);
+            if (found == std::end(dataBytes)) {
+                return nullptr;
+            }
+
+            GBI &fallback = gbiCache[uint32_t(GBIUCode::F3DEX2)];
+            if (fallback.ucode == GBIUCode::Unknown) {
+                fallback.ucode = GBIUCode::F3DEX2;
+                GBI_RDP::setup(&fallback, true);
+                GBI_F3DEX2::setup(&fallback);
+            }
+            fallback.flags.NoN = true;
+            return &fallback;
+        };
+
         int32_t textSegmentIndex = -1;
         uint8_t *rdramCursor = &RDRAM[textAddress];
         uint32_t rdramHashed = 0;
@@ -436,6 +461,9 @@ namespace RT64 {
         }
 
         if (textSegmentIndex < 0 || dataSegmentIndex < 0) {
+            if (GBI *fallback = getF3DEXBGFallback()) {
+                return fallback;
+            }
             fprintf(stderr, "Unable to find a matching GBI in the current database. This game is not supported in HLE.\n");
             deduceGBIInformation(RDRAM, textAddress, dataAddress);
             return nullptr;

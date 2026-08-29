@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <exception>
 #include <cstdlib>
 #include "recomp.h"
@@ -114,6 +115,7 @@ private:
     std::unique_ptr<RT64::Application> m_app;
     std::vector<uint32_t> m_pixel_buffer;
     bool m_has_rendered_workload = false;
+    std::mutex m_rt64_mutex;
 
 public:
     ConkerRendererContext(uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle)
@@ -190,6 +192,7 @@ public:
 
     void send_dl(const OSTask* task) override {
         if (!task) return;
+        const std::lock_guard<std::mutex> rt64Lock(m_rt64_mutex);
         static int dl_count = 0;
         dl_count++;
         if (dl_count <= 10 || dl_count % 60 == 0) {
@@ -247,6 +250,7 @@ public:
     void send_dummy_workload(uint32_t) override {}
 
     void update_screen() override {
+        const std::lock_guard<std::mutex> rt64Lock(m_rt64_mutex);
         if (m_app) {
             try {
                 m_app->updateScreen();
@@ -276,33 +280,31 @@ public:
                 m_pixel_buffer[i] = (0xFF << 24) | (r << 16) | (g << 8) | b;
             }
 
-            if (!m_has_rendered_workload) {
-                HDC hdc = GetDC(m_hwnd);
-                if (hdc) {
-                    RECT client_rect;
-                    GetClientRect(m_hwnd, &client_rect);
-                    int dst_w = client_rect.right - client_rect.left;
-                    int dst_h = client_rect.bottom - client_rect.top;
+            HDC hdc = GetDC(m_hwnd);
+            if (hdc) {
+                RECT client_rect;
+                GetClientRect(m_hwnd, &client_rect);
+                int dst_w = client_rect.right - client_rect.left;
+                int dst_h = client_rect.bottom - client_rect.top;
 
-                    BITMAPINFO bmi = {0};
-                    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-                    bmi.bmiHeader.biWidth = width;
-                    bmi.bmiHeader.biHeight = -static_cast<LONG>(height); // top-down
-                    bmi.bmiHeader.biPlanes = 1;
-                    bmi.bmiHeader.biBitCount = 32;
-                    bmi.bmiHeader.biCompression = BI_RGB;
+                BITMAPINFO bmi = {0};
+                bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                bmi.bmiHeader.biWidth = width;
+                bmi.bmiHeader.biHeight = -static_cast<LONG>(height); // top-down
+                bmi.bmiHeader.biPlanes = 1;
+                bmi.bmiHeader.biBitCount = 32;
+                bmi.bmiHeader.biCompression = BI_RGB;
 
-                    StretchDIBits(
-                        hdc,
-                        0, 0, dst_w, dst_h,
-                        0, 0, width, height,
-                        m_pixel_buffer.data(),
-                        &bmi,
-                        DIB_RGB_COLORS,
-                        SRCCOPY
-                    );
-                    ReleaseDC(m_hwnd, hdc);
-                }
+                StretchDIBits(
+                    hdc,
+                    0, 0, dst_w, dst_h,
+                    0, 0, width, height,
+                    m_pixel_buffer.data(),
+                    &bmi,
+                    DIB_RGB_COLORS,
+                    SRCCOPY
+                );
+                ReleaseDC(m_hwnd, hdc);
             }
         }
     }
@@ -674,6 +676,17 @@ int main(int argc, char* argv[]) {
         error_handling_callbacks,
         threads_callbacks
     );
+
+    ultramodern::MessageQueueControl mqc{
+        .requeue_timer = true,
+        .requeue_sp = true,
+        .requeue_si = true,
+        .requeue_ai = true,
+        .requeue_vi = true,
+        .requeue_pi = true,
+        .requeue_dp = true
+    };
+    ultramodern::set_message_queue_control(mqc);
 
     try {
         recomp::GameEntry game_entry{};

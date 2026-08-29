@@ -10,13 +10,15 @@ extern "C" void osSpTaskLoad_recomp(uint8_t* rdram, recomp_context* ctx) {
 bool dump_frame = false;
 
 extern "C" void osSpTaskStartGo_recomp(uint8_t* rdram, recomp_context* ctx) {
-    //printf("[sp] osSpTaskStartGo(0x%08X)\n", (uint32_t)ctx->r4);
     OSTask* task = TO_PTR(OSTask, ctx->r4);
-    if (task->t.type == M_GFXTASK) {
-        //printf("[sp] Gfx task: %08X\n", (uint32_t)ctx->r4);
-    } else if (task->t.type == M_AUDTASK) {
-        //printf("[sp] Audio task: %08X\n", (uint32_t)ctx->r4);
+    static int task_count = 0;
+    if (task_count < 50 || (task_count % 100 == 0)) {
+        printf("[sp] osSpTaskStartGo #%d: type=%u, flags=0x%x, data_ptr=0x%08X, data_size=%u\n",
+            task_count, task->t.type, task->t.flags, (uint32_t)task->t.data_ptr, (uint32_t)task->t.data_size);
+        fflush(stdout);
     }
+    task_count++;
+
     // For debugging
     if (dump_frame) {
         char addr_str[32];

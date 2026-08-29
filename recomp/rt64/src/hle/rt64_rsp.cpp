@@ -838,7 +838,13 @@ namespace RT64 {
         const bool forceBranch = state->ext.enhancementConfig->f3dex.forceBranch || extended.forceBranch;
         const int workloadCursor = state->ext.workloadQueue->writeCursor;
         const Workload &workload = state->ext.workloadQueue->workloads[workloadCursor];
+        if (vtxIndex >= RSP_MAX_VERTICES) {
+            return;
+        }
         const uint32_t globalIndex = indices[vtxIndex];
+        if (globalIndex >= workload.drawData.posScreen.size()) {
+            return;
+        }
         const float screenZ = workload.drawData.posScreen[globalIndex][2] * DepthRange;
         const float zValueFloat = zValue / 65536.0f;
         if (forceBranch || (screenZ < zValueFloat)) {
@@ -851,7 +857,13 @@ namespace RT64 {
         const bool forceBranch = state->ext.enhancementConfig->f3dex.forceBranch || extended.forceBranch;
         const int workloadCursor = state->ext.workloadQueue->writeCursor;
         const Workload &workload = state->ext.workloadQueue->workloads[workloadCursor];
+        if (vtxIndex >= RSP_MAX_VERTICES) {
+            return;
+        }
         const uint32_t globalIndex = indices[vtxIndex];
+        if (globalIndex >= workload.drawData.posTransformed.size()) {
+            return;
+        }
         const float posW = workload.drawData.posTransformed[globalIndex][3];
         if (forceBranch || (posW < static_cast<float>(wValue))) {
             const uint32_t rdramAddress = fromSegmentedMasked(branchDl);
@@ -1050,6 +1062,9 @@ namespace RT64 {
     }
 
     void RSP::drawIndexedTri(uint32_t a, uint32_t b, uint32_t c, bool rawGlobalIndices) {
+        if (!rawGlobalIndices && ((a >= RSP_MAX_VERTICES) || (b >= RSP_MAX_VERTICES) || (c >= RSP_MAX_VERTICES))) {
+            return;
+        }
         // Copy mode is not supported when drawing regular tris and crashes the hardware.
         const uint32_t cycleType = state->rdp->otherMode.cycleType();
         assert(cycleType != G_CYC_COPY);
@@ -1115,6 +1130,17 @@ namespace RT64 {
             globalIndices[1] = indices[b];
             globalIndices[2] = indices[c];
             used[a] = used[b] = used[c] = true;
+        }
+
+        const uint32_t vertexCount = uint32_t(workload.drawData.vertexCount());
+        if ((globalIndices[0] >= vertexCount) || (globalIndices[1] >= vertexCount) || (globalIndices[2] >= vertexCount)) {
+            return;
+        }
+        const uint32_t maxGlobalIndex = std::max(globalIndices[0], std::max(globalIndices[1], globalIndices[2]));
+        if ((workload.drawData.tcFloats.size() < (size_t(maxGlobalIndex) + 1) * 2) ||
+            (workload.drawData.worldIndices.size() <= maxGlobalIndex) ||
+            (workload.drawData.posScreen.size() <= maxGlobalIndex)) {
+            return;
         }
 
         // Indicates the vertex has been used in a tri. Whatever routines modify the vertex afterwards must use a new index instead.

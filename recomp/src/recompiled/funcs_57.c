@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -626,6 +627,7 @@ RECOMP_FUNC void func_15122AE0(uint8_t* rdram, recomp_context* ctx) {
     MEM_W(0X28, ctx->r29) = ctx->r17;
     // 0x15122B0C: sw          $s0, 0x24($sp)
     MEM_W(0X24, ctx->r29) = ctx->r16;
+    printf("[func_15122AE0] entry: t6=MEM_W(0x800C-15F8)=%08X, s2=%08X\n", (uint32_t)ctx->r14, (uint32_t)ctx->r18); fflush(stdout);
     // 0x15122B10: sdc1        $f20, 0x18($sp)
     CHECK_FR(ctx, 20);
     SD(ctx->f20.u64, 0X18, ctx->r29);
@@ -664,6 +666,7 @@ RECOMP_FUNC void func_15122AE0(uint8_t* rdram, recomp_context* ctx) {
     NAN_CHECK(ctx->f6.fl); NAN_CHECK(ctx->f8.fl); 
     ctx->f20.fl = MUL_S(ctx->f6.fl, ctx->f8.fl);
     // 0x15122B4C: bltz        $t7, L_15122C18
+    printf("[func_15122AE0] count t7=%d\n", (int32_t)ctx->r15); fflush(stdout);
     if (SIGNED(ctx->r15) < 0) {
         // 0x15122B50: or          $s1, $zero, $zero
         ctx->r17 = 0 | 0;
@@ -694,6 +697,7 @@ L_15122B60:
     ctx->r24 = lo;
     // 0x15122B7C: addu        $s0, $t8, $t9
     ctx->r16 = ADD32(ctx->r24, ctx->r25);
+    printf("[func_15122AE0] loop i=%d, s4=%08X, t9(actor_base)=%08X, s0(actor_ptr)=%08X\n", (int32_t)ctx->r17, (uint32_t)ctx->r20, (uint32_t)ctx->r25, (uint32_t)ctx->r16); fflush(stdout);
     // 0x15122B80: jal         0x150859AC
     // 0x15122B84: nop
 
@@ -765,6 +769,7 @@ L_15122BCC:
     // 0x15122BCC: jal         0x151239CC
     // 0x15122BD0: addiu       $a1, $zero, 0x5
     ctx->r5 = ADD32(0, 0X5);
+    printf("[func_15122AE0] calling func_151239CC\n"); fflush(stdout);
     func_151239CC(rdram, ctx);
         goto after_1;
     // 0x15122BD0: addiu       $a1, $zero, 0x5
@@ -773,6 +778,7 @@ L_15122BCC:
     // 0x15122BD4: jal         0x15122C5C
     // 0x15122BD8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122AE0] calling func_15122C5C\n"); fflush(stdout);
     func_15122C5C(rdram, ctx);
         goto after_2;
     // 0x15122BD8: or          $a0, $s0, $zero
@@ -792,14 +798,16 @@ L_15122BE4:
     // 0x15122BEC: jal         0x15123934
     // 0x15122BF0: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122AE0] calling func_15123934\n"); fflush(stdout);
     func_15123934(rdram, ctx);
         goto after_3;
-    // 0x15122BF0: or          $a0, $s0, $zero
+    // 0x15122BF0: or          $a0, $zero, $zero
     ctx->r4 = ctx->r16 | 0;
     after_3:
     // 0x15122BF4: jal         0x1512C490
     // 0x15122BF8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122AE0] calling func_1512C490\n"); fflush(stdout);
     func_1512C490(rdram, ctx);
         goto after_4;
     // 0x15122BF8: or          $a0, $s0, $zero
@@ -4599,8 +4607,8 @@ L_150AC258:
     // 0x150AC288: jr          $t0
     // 0x150AC28C: add         $s5, $s5, $t1
     ctx->r21 = ADD32(ctx->r21, ctx->r9);
-    LOOKUP_FUNC(ctx->r8)(rdram, ctx);
     return;
+
     // 0x150AC28C: add         $s5, $s5, $t1
     ctx->r21 = ADD32(ctx->r21, ctx->r9);
     // 0x150AC290: beq         $s0, $zero, L_150AC2A0
@@ -4622,10 +4630,6 @@ L_150AC2A0:
     // 0x150AC2A0: lw          $t0, 0x1DC($sp)
     ctx->r8 = MEM_W(ctx->r29, 0X1DC);
     // 0x150AC2A4: jr          $t0
-    // 0x150AC2A8: nop
-
-    LOOKUP_FUNC(ctx->r8)(rdram, ctx);
-    return;
     // 0x150AC2A8: nop
 
     // 0x150AC2AC: lwc1        $f0, 0x34($sp)

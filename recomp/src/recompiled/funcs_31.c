@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -13595,6 +13596,7 @@ RECOMP_FUNC void func_15122C5C(uint8_t* rdram, recomp_context* ctx) {
     MEM_W(0X24, ctx->r29) = ctx->r31;
     // 0x15122C6C: lbu         $t6, 0x23C($s0)
     ctx->r14 = MEM_BU(ctx->r16, 0X23C);
+    printf("[func_15122C5C] a0=%08X, t6(23C)=%02X, v0(3D4)=%08X\n", (uint32_t)ctx->r16, (uint32_t)ctx->r14, (uint32_t)MEM_W(ctx->r16, 0x3D4)); fflush(stdout);
     // 0x15122C70: beql        $t6, $zero, L_15122CAC
     if (ctx->r14 == 0) {
         // 0x15122C74: lw          $v0, 0x3D4($s0)
@@ -13636,6 +13638,7 @@ L_15122CAC:
     ctx->r4 = ADD32(ctx->r16, 0X2BC);
     // 0x15122CB0: addiu       $a1, $s0, 0x2F8
     ctx->r5 = ADD32(ctx->r16, 0X2F8);
+    printf("[func_15122C5C] at L_15122CAC: v0=%08X\n", (uint32_t)ctx->r2); fflush(stdout);
     // 0x15122CB4: beql        $v0, $zero, L_15122CF0
     if (ctx->r2 == 0) {
         // 0x15122CB8: lbu         $t5, 0x23D($s0)
@@ -13650,6 +13653,7 @@ L_15122CAC:
     ctx->r3 = MEM_H(ctx->r16, 0X73C);
     // 0x15122CC0: addiu       $at, $zero, 0x3
     ctx->r1 = ADD32(0, 0X3);
+    printf("[func_15122C5C] v1(73C)=%d, at=%d\n", (int32_t)ctx->r3, (int32_t)ctx->r1); fflush(stdout);
     // 0x15122CC4: beql        $v1, $at, L_15122CF0
     if (ctx->r3 == ctx->r1) {
         // 0x15122CC8: lbu         $t5, 0x23D($s0)
@@ -13664,10 +13668,13 @@ L_15122CAC:
     ctx->r11 = MEM_W(ctx->r16, 0X2C);
     // 0x15122CD0: addiu       $at, $zero, 0x100
     ctx->r1 = ADD32(0, 0X100);
+    printf("[func_15122C5C] rdram=%p, t3(2C)=%08X, v0=%08X\n", rdram, (uint32_t)ctx->r11, (uint32_t)ctx->r2); fflush(stdout);
     // 0x15122CD4: bnel        $t3, $at, L_15122CE8
     if (ctx->r11 != ctx->r1) {
         // 0x15122CD8: lbu         $t4, 0x78($v0)
+        printf("[func_15122C5C] reading MEM_BU(v0=%08X, 0x78)...\n", (uint32_t)ctx->r2); fflush(stdout);
         ctx->r12 = MEM_BU(ctx->r2, 0X78);
+        printf("[func_15122C5C] read t4=%02X\n", (uint32_t)ctx->r12); fflush(stdout);
             goto L_15122CE8;
     }
     goto skip_3;
@@ -13688,6 +13695,7 @@ L_15122CAC:
     ctx->r12 = MEM_BU(ctx->r2, 0X78);
 L_15122CE8:
     // 0x15122CE8: sb          $t4, 0x23E($s0)
+    printf("[func_15122C5C] writing MEM_B(0x23E, s0=%08X) = %02X...\n", (uint32_t)ctx->r16, (uint32_t)ctx->r12); fflush(stdout);
     MEM_B(0X23E, ctx->r16) = ctx->r12;
     // 0x15122CEC: lbu         $t5, 0x23D($s0)
     ctx->r13 = MEM_BU(ctx->r16, 0X23D);
@@ -13698,8 +13706,10 @@ L_15122CF0:
     ctx->r1 = ADD32(0, 0X4);
     // 0x15122CF8: addu        $t6, $t6, $t5
     ctx->r14 = ADD32(ctx->r14, ctx->r13);
+    printf("[func_15122C5C] at L_15122CF0: reading MEM_BU(t6=%08X, -0x400C)...\n", (uint32_t)ctx->r14); fflush(stdout);
     // 0x15122CFC: lbu         $t6, -0x400C($t6)
     ctx->r14 = MEM_BU(ctx->r14, -0X400C);
+    printf("[func_15122C5C] read t6=%02X\n", (uint32_t)ctx->r14); fflush(stdout);
     // 0x15122D00: lui         $t5, 0x800C
     ctx->r13 = S32(0X800C << 16);
     // 0x15122D04: beql        $t6, $at, L_15122D20
@@ -13725,6 +13735,7 @@ L_15122CF0:
 L_15122D20:
     // 0x15122D20: sll         $t1, $t9, 9
     ctx->r9 = S32(ctx->r25 << 9);
+    printf("[func_15122C5C] at L_15122D20: t9=%08X, t1=%08X\n", (uint32_t)ctx->r25, (uint32_t)ctx->r9); fflush(stdout);
     // 0x15122D24: bltzl       $t1, L_15122D60
     if (SIGNED(ctx->r9) < 0) {
         // 0x15122D28: lbu         $v0, 0x23D($s0)
@@ -13762,20 +13773,25 @@ L_15122D20:
     // 0x15122D5C: lbu         $v0, 0x23D($s0)
     ctx->r2 = MEM_BU(ctx->r16, 0X23D);
 L_15122D60:
+    printf("[func_15122C5C] at L_15122D60: t5=%08X, v0=%08X\n", (uint32_t)ctx->r13, (uint32_t)ctx->r2); fflush(stdout);
     // 0x15122D60: lw          $t5, -0x18D8($t5)
     ctx->r13 = MEM_W(ctx->r13, -0X18D8);
+    printf("[func_15122C5C] loaded t5(table)=%08X\n", (uint32_t)ctx->r13); fflush(stdout);
     // 0x15122D64: lui         $t1, 0x800C
     ctx->r9 = S32(0X800C << 16);
     // 0x15122D68: sll         $t6, $v0, 2
     ctx->r14 = S32(ctx->r2 << 2);
     // 0x15122D6C: addu        $t8, $t5, $t6
     ctx->r24 = ADD32(ctx->r13, ctx->r14);
+    printf("[func_15122C5C] reading MEM_W(t8=%08X)...\n", (uint32_t)ctx->r24); fflush(stdout);
     // 0x15122D70: lw          $t7, 0x0($t8)
     ctx->r15 = MEM_W(ctx->r24, 0X0);
+    printf("[func_15122C5C] read t7=%08X\n", (uint32_t)ctx->r15); fflush(stdout);
     // 0x15122D74: sll         $t9, $v0, 1
     ctx->r25 = S32(ctx->r2 << 1);
     // 0x15122D78: addu        $t1, $t1, $t9
     ctx->r9 = ADD32(ctx->r9, ctx->r25);
+    printf("[func_15122C5C] writing 36C and 36A...\n"); fflush(stdout);
     // 0x15122D7C: sw          $t7, 0x36C($s0)
     MEM_W(0X36C, ctx->r16) = ctx->r15;
     // 0x15122D80: lhu         $t1, -0x18F0($t1)
@@ -13812,6 +13828,7 @@ L_15122D60:
     MEM_W(0X2CC, ctx->r16) = ctx->r12;
     // 0x15122DC0: lw          $at, 0x8($a0)
     ctx->r1 = MEM_W(ctx->r4, 0X8);
+    printf("[func_15122C5C] at 15122DC4, t5=%02X\n", (uint32_t)ctx->r13); fflush(stdout);
     // 0x15122DC4: beq         $t5, $zero, L_15122DE0
     if (ctx->r13 == 0) {
         // 0x15122DC8: sw          $at, 0x2D0($s0)
@@ -13894,6 +13911,7 @@ L_15122E1C:
     ctx->r1 = S32(0X4180 << 16);
     // 0x15122E24: andi        $t8, $t6, 0x100
     ctx->r24 = ctx->r14 & 0X100;
+    printf("[func_15122C5C] at 15122E1C, t8=%08X\n", (uint32_t)ctx->r24); fflush(stdout);
     // 0x15122E28: beql        $t8, $zero, L_15122E40
     if (ctx->r24 == 0) {
         // 0x15122E2C: mtc1        $zero, $f0
@@ -13920,8 +13938,10 @@ L_15122E40:
     // 0x15122E44: lbu         $v0, 0x23D($s0)
     ctx->r2 = MEM_BU(ctx->r16, 0X23D);
 L_15122E48:
+    printf("[func_15122C5C] at L_15122E48: t7=%08X, v0=%08X\n", (uint32_t)ctx->r15, (uint32_t)ctx->r2); fflush(stdout);
     // 0x15122E48: lw          $t7, -0x19D8($t7)
     ctx->r15 = MEM_W(ctx->r15, -0X19D8);
+    printf("[func_15122C5C] loaded t7=%08X\n", (uint32_t)ctx->r15); fflush(stdout);
     // 0x15122E4C: lw          $a1, 0x19C($s0)
     ctx->r5 = MEM_W(ctx->r16, 0X19C);
     // 0x15122E50: sll         $t9, $v0, 2
@@ -13941,6 +13961,7 @@ L_15122E48:
     // 0x15122E6C: jal         0x1510B128
     // 0x15122E70: or          $a0, $v0, $zero
     ctx->r4 = ctx->r2 | 0;
+    printf("[func_15122C5C] calling func_1510B128\n"); fflush(stdout);
     func_1510B128(rdram, ctx);
         goto after_0;
     // 0x15122E70: or          $a0, $v0, $zero
@@ -13949,6 +13970,7 @@ L_15122E48:
     // 0x15122E74: jal         0x15097798
     // 0x15122E78: lbu         $a0, 0x23D($s0)
     ctx->r4 = MEM_BU(ctx->r16, 0X23D);
+    printf("[func_15122C5C] calling func_15097798\n"); fflush(stdout);
     func_15097798(rdram, ctx);
         goto after_1;
     // 0x15122E78: lbu         $a0, 0x23D($s0)
@@ -13957,6 +13979,7 @@ L_15122E48:
     // 0x15122E7C: jal         0x15125A6C
     // 0x15122E80: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125A6C\n"); fflush(stdout);
     func_15125A6C(rdram, ctx);
         goto after_2;
     // 0x15122E80: or          $a0, $s0, $zero
@@ -13965,6 +13988,7 @@ L_15122E48:
     // 0x15122E84: jal         0x15128CB0
     // 0x15122E88: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15128CB0\n"); fflush(stdout);
     func_15128CB0(rdram, ctx);
         goto after_3;
     // 0x15122E88: or          $a0, $s0, $zero
@@ -13973,11 +13997,13 @@ L_15122E48:
     // 0x15122E8C: jal         0x15125DB4
     // 0x15122E90: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125DB4\n"); fflush(stdout);
     func_15125DB4(rdram, ctx);
         goto after_4;
     // 0x15122E90: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
     after_4:
+    printf("[func_15122C5C] post-15125DB4, s0=%08X\n", (uint32_t)ctx->r16); fflush(stdout);
     // 0x15122E94: lw          $v0, 0x3D4($s0)
     ctx->r2 = MEM_W(ctx->r16, 0X3D4);
     // 0x15122E98: lbu         $t0, 0x120($v0)
@@ -14003,6 +14029,7 @@ L_15122E48:
     // 0x15122EB0: jal         0x15127EB8
     // 0x15122EB4: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15127EB8\n"); fflush(stdout);
     func_15127EB8(rdram, ctx);
         goto after_5;
     // 0x15122EB4: or          $a0, $s0, $zero
@@ -14012,11 +14039,13 @@ L_15122EB8:
     // 0x15122EB8: jal         0x15128540
     // 0x15122EBC: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15128540\n"); fflush(stdout);
     func_15128540(rdram, ctx);
         goto after_6;
     // 0x15122EBC: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
     after_6:
+    printf("[func_15122C5C] post-15128540: v0=%08X\n", (uint32_t)ctx->r2); fflush(stdout);
     // 0x15122EC0: bnel        $v0, $zero, L_15123060
     if (ctx->r2 != 0) {
         // 0x15122EC4: lw          $ra, 0x24($sp)
@@ -14050,6 +14079,7 @@ L_15122EB8:
     // 0x15122EE0: jal         0x1512E8E0
     // 0x15122EE4: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512E8E0\n"); fflush(stdout);
     func_1512E8E0(rdram, ctx);
         goto after_7;
     // 0x15122EE4: or          $a0, $s0, $zero
@@ -14063,6 +14093,7 @@ L_15122EE8:
     // 0x15122EF0: jal         0x15130230
     // 0x15122EF4: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15130230\n"); fflush(stdout);
     func_15130230(rdram, ctx);
         goto after_8;
     // 0x15122EF4: or          $a0, $s0, $zero
@@ -14071,6 +14102,7 @@ L_15122EE8:
     // 0x15122EF8: jal         0x15126138
     // 0x15122EFC: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15126138\n"); fflush(stdout);
     func_15126138(rdram, ctx);
         goto after_9;
     // 0x15122EFC: or          $a0, $s0, $zero
@@ -14079,6 +14111,7 @@ L_15122EE8:
     // 0x15122F00: jal         0x15125C40
     // 0x15122F04: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125C40\n"); fflush(stdout);
     func_15125C40(rdram, ctx);
         goto after_10;
     // 0x15122F04: or          $a0, $s0, $zero
@@ -14087,6 +14120,7 @@ L_15122EE8:
     // 0x15122F08: jal         0x15128680
     // 0x15122F0C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15128680\n"); fflush(stdout);
     func_15128680(rdram, ctx);
         goto after_11;
     // 0x15122F0C: or          $a0, $s0, $zero
@@ -14095,6 +14129,7 @@ L_15122EE8:
     // 0x15122F10: jal         0x1512317C
     // 0x15122F14: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512317C\n"); fflush(stdout);
     func_1512317C(rdram, ctx);
         goto after_12;
     // 0x15122F14: or          $a0, $s0, $zero
@@ -14103,6 +14138,7 @@ L_15122EE8:
     // 0x15122F18: jal         0x15125394
     // 0x15122F1C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125394\n"); fflush(stdout);
     func_15125394(rdram, ctx);
         goto after_13;
     // 0x15122F1C: or          $a0, $s0, $zero
@@ -14131,6 +14167,7 @@ L_15122EE8:
     // 0x15122F38: jal         0x1512E8E0
     // 0x15122F3C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512E8E0 (2)\n"); fflush(stdout);
     func_1512E8E0(rdram, ctx);
         goto after_14;
     // 0x15122F3C: or          $a0, $s0, $zero
@@ -14140,6 +14177,7 @@ L_15122F40:
     // 0x15122F40: jal         0x15123568
     // 0x15122F44: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15123568\n"); fflush(stdout);
     func_15123568(rdram, ctx);
         goto after_15;
     // 0x15122F44: or          $a0, $s0, $zero
@@ -14148,6 +14186,7 @@ L_15122F40:
     // 0x15122F48: jal         0x1512C200
     // 0x15122F4C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C200\n"); fflush(stdout);
     func_1512C200(rdram, ctx);
         goto after_16;
     // 0x15122F4C: or          $a0, $s0, $zero
@@ -14156,6 +14195,7 @@ L_15122F40:
     // 0x15122F50: jal         0x15125924
     // 0x15122F54: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125924\n"); fflush(stdout);
     func_15125924(rdram, ctx);
         goto after_17;
     // 0x15122F54: or          $a0, $s0, $zero
@@ -14164,6 +14204,7 @@ L_15122F40:
     // 0x15122F58: jal         0x151283B8
     // 0x15122F5C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_151283B8\n"); fflush(stdout);
     func_151283B8(rdram, ctx);
         goto after_18;
     // 0x15122F5C: or          $a0, $s0, $zero
@@ -14182,6 +14223,7 @@ L_15122F40:
     // 0x15122F6C: jal         0x15125594
     // 0x15122F70: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125594\n"); fflush(stdout);
     func_15125594(rdram, ctx);
         goto after_19;
     // 0x15122F70: or          $a0, $s0, $zero
@@ -14190,6 +14232,7 @@ L_15122F40:
     // 0x15122F74: jal         0x15123070
     // 0x15122F78: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15123070\n"); fflush(stdout);
     func_15123070(rdram, ctx);
         goto after_20;
     // 0x15122F78: or          $a0, $s0, $zero
@@ -14198,6 +14241,7 @@ L_15122F40:
     // 0x15122F7C: jal         0x151283B8
     // 0x15122F80: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_151283B8 (2)\n"); fflush(stdout);
     func_151283B8(rdram, ctx);
         goto after_21;
     // 0x15122F80: or          $a0, $s0, $zero
@@ -14206,6 +14250,7 @@ L_15122F40:
     // 0x15122F84: jal         0x151283B8
     // 0x15122F88: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_151283B8 (3)\n"); fflush(stdout);
     func_151283B8(rdram, ctx);
         goto after_22;
     // 0x15122F88: or          $a0, $s0, $zero
@@ -14215,6 +14260,7 @@ L_15122F8C:
     // 0x15122F8C: jal         0x15123508
     // 0x15122F90: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15123508\n"); fflush(stdout);
     func_15123508(rdram, ctx);
         goto after_23;
     // 0x15122F90: or          $a0, $s0, $zero
@@ -14247,6 +14293,7 @@ L_15122F8C:
     // 0x15122FB4: jal         0x1512D390
     // 0x15122FB8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512D390\n"); fflush(stdout);
     func_1512D390(rdram, ctx);
         goto after_24;
     // 0x15122FB8: or          $a0, $s0, $zero
@@ -14256,6 +14303,7 @@ L_15122FBC:
     // 0x15122FBC: jal         0x15125594
     // 0x15122FC0: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125594 (2)\n"); fflush(stdout);
     func_15125594(rdram, ctx);
         goto after_25;
     // 0x15122FC0: or          $a0, $s0, $zero
@@ -14264,6 +14312,7 @@ L_15122FBC:
     // 0x15122FC4: jal         0x151256BC
     // 0x15122FC8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_151256BC\n"); fflush(stdout);
     func_151256BC(rdram, ctx);
         goto after_26;
     // 0x15122FC8: or          $a0, $s0, $zero
@@ -14272,6 +14321,7 @@ L_15122FBC:
     // 0x15122FCC: jal         0x1512D980
     // 0x15122FD0: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512D980\n"); fflush(stdout);
     func_1512D980(rdram, ctx);
         goto after_27;
     // 0x15122FD0: or          $a0, $s0, $zero
@@ -14280,6 +14330,7 @@ L_15122FBC:
     // 0x15122FD4: jal         0x1512C068
     // 0x15122FD8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C068\n"); fflush(stdout);
     func_1512C068(rdram, ctx);
         goto after_28;
     // 0x15122FD8: or          $a0, $s0, $zero
@@ -14288,6 +14339,7 @@ L_15122FBC:
     // 0x15122FDC: jal         0x1512B100
     // 0x15122FE0: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512B100\n"); fflush(stdout);
     func_1512B100(rdram, ctx);
         goto after_29;
     // 0x15122FE0: or          $a0, $s0, $zero
@@ -14296,6 +14348,7 @@ L_15122FBC:
     // 0x15122FE4: jal         0x1512C20C
     // 0x15122FE8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C20C\n"); fflush(stdout);
     func_1512C20C(rdram, ctx);
         goto after_30;
     // 0x15122FE8: or          $a0, $s0, $zero
@@ -14304,6 +14357,7 @@ L_15122FBC:
     // 0x15122FEC: jal         0x1512BB10
     // 0x15122FF0: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512BB10\n"); fflush(stdout);
     func_1512BB10(rdram, ctx);
         goto after_31;
     // 0x15122FF0: or          $a0, $s0, $zero
@@ -14322,6 +14376,7 @@ L_15122FBC:
     // 0x15123000: jal         0x1512C068
     // 0x15123004: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C068 (2)\n"); fflush(stdout);
     func_1512C068(rdram, ctx);
         goto after_32;
     // 0x15123004: or          $a0, $s0, $zero
@@ -14330,6 +14385,7 @@ L_15122FBC:
     // 0x15123008: jal         0x1512B100
     // 0x1512300C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512B100 (2)\n"); fflush(stdout);
     func_1512B100(rdram, ctx);
         goto after_33;
     // 0x1512300C: or          $a0, $s0, $zero
@@ -14338,6 +14394,7 @@ L_15122FBC:
     // 0x15123010: jal         0x1512C20C
     // 0x15123014: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C20C (2)\n"); fflush(stdout);
     func_1512C20C(rdram, ctx);
         goto after_34;
     // 0x15123014: or          $a0, $s0, $zero
@@ -14346,6 +14403,7 @@ L_15122FBC:
     // 0x15123018: jal         0x1512BB10
     // 0x1512301C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512BB10 (2)\n"); fflush(stdout);
     func_1512BB10(rdram, ctx);
         goto after_35;
     // 0x1512301C: or          $a0, $s0, $zero
@@ -14355,6 +14413,7 @@ L_15123020:
     // 0x15123020: jal         0x15125594
     // 0x15123024: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15125594 (3)\n"); fflush(stdout);
     func_15125594(rdram, ctx);
         goto after_36;
     // 0x15123024: or          $a0, $s0, $zero
@@ -14363,6 +14422,7 @@ L_15123020:
     // 0x15123028: jal         0x15123070
     // 0x1512302C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_15123070 (2)\n"); fflush(stdout);
     func_15123070(rdram, ctx);
         goto after_37;
     // 0x1512302C: or          $a0, $s0, $zero
@@ -14385,6 +14445,7 @@ L_15123020:
     // 0x15123044: jal         0x151287E0
     // 0x15123048: or          $a2, $zero, $zero
     ctx->r6 = 0 | 0;
+    printf("[func_15122C5C] calling func_151287E0\n"); fflush(stdout);
     func_151287E0(rdram, ctx);
         goto after_38;
     // 0x15123048: or          $a2, $zero, $zero
@@ -14394,6 +14455,7 @@ L_1512304C:
     // 0x1512304C: jal         0x1512C150
     // 0x15123050: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_1512C150\n"); fflush(stdout);
     func_1512C150(rdram, ctx);
         goto after_39;
     // 0x15123050: or          $a0, $s0, $zero
@@ -14402,6 +14464,7 @@ L_1512304C:
     // 0x15123054: jal         0x151284C4
     // 0x15123058: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15122C5C] calling func_151284C4\n"); fflush(stdout);
     func_151284C4(rdram, ctx);
         goto after_40;
     // 0x15123058: or          $a0, $s0, $zero
@@ -14416,7 +14479,7 @@ L_15123060:
     ctx->r29 = ADD32(ctx->r29, 0X28);
     // 0x15123068: jr          $ra
     // 0x1512306C: nop
-
+    printf("[func_15122C5C] returning\n"); fflush(stdout);
     return;
     return;
     // 0x1512306C: nop

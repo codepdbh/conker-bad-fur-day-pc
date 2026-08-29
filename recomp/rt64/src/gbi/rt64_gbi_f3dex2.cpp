@@ -158,14 +158,23 @@ namespace RT64 {
         }
 
         void tri4(State *state, DisplayList **dl) {
-            uint8_t v0 = (*dl)->p0(16, 8) / 2;
-            uint8_t v1 = (*dl)->p0(8, 8) / 2;
-            uint8_t v2 = (*dl)->p0(0, 8) / 2;
-            uint8_t v3 = (*dl)->p1(24, 8) / 2;
-            uint8_t v4 = (*dl)->p1(16, 8) / 2;
-            uint8_t v5 = (*dl)->p1(8, 8) / 2;
+            // Rare's F3DEXBG packs four triangles into the two command words.
+            const uint8_t v0 = (*dl)->p0(23, 5);
+            const uint8_t v1 = (*dl)->p0(18, 5);
+            const uint8_t v2 = ((*dl)->p0(15, 3) << 2) | (*dl)->p1(30, 2);
+            const uint8_t v3 = (*dl)->p0(10, 5);
+            const uint8_t v4 = (*dl)->p0(5, 5);
+            const uint8_t v5 = (*dl)->p0(0, 5);
+            const uint8_t v6 = (*dl)->p1(25, 5);
+            const uint8_t v7 = (*dl)->p1(20, 5);
+            const uint8_t v8 = (*dl)->p1(15, 5);
+            const uint8_t v9 = (*dl)->p1(10, 5);
+            const uint8_t v10 = (*dl)->p1(5, 5);
+            const uint8_t v11 = (*dl)->p1(0, 5);
             state->rsp->drawIndexedTri(v0, v1, v2);
             state->rsp->drawIndexedTri(v3, v4, v5);
+            state->rsp->drawIndexedTri(v6, v7, v8);
+            state->rsp->drawIndexedTri(v9, v10, v11);
         }
 
         void reset(State *state) {
@@ -210,7 +219,11 @@ namespace RT64 {
             gbi->map[F3DEX2_G_TRI1] = &tri1;
             gbi->map[F3DEX2_G_TRI2] = &tri2;
             gbi->map[F3DEX2_G_QUAD] = &quad;
-            gbi->map[0x07] = &tri4;
+            // F3DEXBG uses the whole 0x10-0x1F opcode range for Tri4. Keep
+            // opcode 0x07 as the standard F3DEX2 quad command.
+            for (uint32_t opcode = 0x10; opcode <= 0x1F; opcode++) {
+                gbi->map[opcode] = &tri4;
+            }
             gbi->map[0x0A] = &GBI_EXTENDED::noOpHook;
             gbi->map[F3DEX2_G_LINE3D] = &line3D;
             gbi->map[G_RDPSETOTHERMODE] = &setOtherMode;

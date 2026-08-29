@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -3268,6 +3269,7 @@ L_100013E4:
     // 0x100013FC: jal         0x10005BE0
     // 0x10001400: nop
 
+    printf("[Conker Boot] Thread 3 calling func_10005BE0...\n"); fflush(stdout);
     func_10005BE0(rdram, ctx);
         goto after_20;
     // 0x10001400: nop
@@ -3276,6 +3278,7 @@ L_100013E4:
     // 0x10001404: jal         0x15007830
     // 0x10001408: nop
 
+    printf("[Conker Boot] Thread 3 entering func_15007830 (Game Overlay Main Loop)...\n"); fflush(stdout);
     func_15007830(rdram, ctx);
         goto after_21;
     // 0x10001408: nop
@@ -17358,6 +17361,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078A0: jal         0x100050A0
     // 0x150078A4: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[Conker Init] Step 1: func_100050A0\n"); fflush(stdout);
     func_100050A0(rdram, ctx);
         goto after_2;
     // 0x150078A4: or          $a0, $s0, $zero
@@ -17366,6 +17370,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078A8: jal         0x15003570
     // 0x150078AC: nop
 
+    printf("[Conker Init] Step 2: func_15003570\n"); fflush(stdout);
     func_15003570(rdram, ctx);
         goto after_3;
     // 0x150078AC: nop
@@ -17376,6 +17381,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078B4: jal         0x10008180
     // 0x150078B8: sb          $zero, -0x1555($at)
     MEM_B(-0X1555, ctx->r1) = 0;
+    printf("[Conker Init] Step 3: func_10008180\n"); fflush(stdout);
     func_10008180(rdram, ctx);
         goto after_4;
     // 0x150078B8: sb          $zero, -0x1555($at)
@@ -17384,6 +17390,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078BC: jal         0x15000000
     // 0x150078C0: nop
 
+    printf("[Conker Init] Step 4: func_15000000\n"); fflush(stdout);
     func_15000000(rdram, ctx);
         goto after_5;
     // 0x150078C0: nop
@@ -17392,6 +17399,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078C4: jal         0x15016588
     // 0x150078C8: nop
 
+    printf("[Conker Init] Step 5: func_15016588\n"); fflush(stdout);
     func_15016588(rdram, ctx);
         goto after_6;
     // 0x150078C8: nop
@@ -17400,6 +17408,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078CC: jal         0x151EEFF0
     // 0x150078D0: nop
 
+    printf("[Conker Init] Step 6: func_151EEFF0\n"); fflush(stdout);
     func_151EEFF0(rdram, ctx);
         goto after_7;
     // 0x150078D0: nop
@@ -17410,6 +17419,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078D8: jal         0x150061B0
     // 0x150078DC: sh          $zero, -0x1558($at)
     MEM_H(-0X1558, ctx->r1) = 0;
+    printf("[Conker Init] Step 7: func_150061B0\n"); fflush(stdout);
     func_150061B0(rdram, ctx);
         goto after_8;
     // 0x150078DC: sh          $zero, -0x1558($at)
@@ -17418,6 +17428,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078E0: jal         0x15006234
     // 0x150078E4: nop
 
+    printf("[Conker Init] Step 8: func_15006234\n"); fflush(stdout);
     func_15006234(rdram, ctx);
         goto after_9;
     // 0x150078E4: nop
@@ -17426,6 +17437,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078E8: jal         0x151DD970
     // 0x150078EC: nop
 
+    printf("[Conker Init] Step 9: func_151DD970\n"); fflush(stdout);
     func_151DD970(rdram, ctx);
         goto after_10;
     // 0x150078EC: nop
@@ -17434,6 +17446,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078F0: jal         0x15015920
     // 0x150078F4: or          $a0, $zero, $zero
     ctx->r4 = 0 | 0;
+    printf("[Conker Init] Step 10: func_15015920\n"); fflush(stdout);
     func_15015920(rdram, ctx);
         goto after_11;
     // 0x150078F4: or          $a0, $zero, $zero
@@ -17442,6 +17455,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x150078F8: jal         0x15008A60
     // 0x150078FC: nop
 
+    printf("[Conker Init] Step 11: func_15008A60\n"); fflush(stdout);
     func_15008A60(rdram, ctx);
         goto after_12;
     // 0x150078FC: nop
@@ -17450,6 +17464,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x15007900: jal         0x15042D50
     // 0x15007904: nop
 
+    printf("[Conker Init] Step 12: func_15042D50\n"); fflush(stdout);
     func_15042D50(rdram, ctx);
         goto after_13;
     // 0x15007904: nop
@@ -17484,6 +17499,7 @@ RECOMP_FUNC void func_15007830(uint8_t* rdram, recomp_context* ctx) {
     // 0x1500793C: jal         0x1509C120
     // 0x15007940: sb          $t8, -0x1556($at)
     MEM_B(-0X1556, ctx->r1) = ctx->r24;
+    printf("[Conker Init] Step 13: func_1509C120\n"); fflush(stdout);
     func_1509C120(rdram, ctx);
         goto after_14;
     // 0x15007940: sb          $t8, -0x1556($at)
@@ -17608,7 +17624,7 @@ L_150079CC:
 
     func_100051E8(rdram, ctx);
         goto after_20;
-    // 0x150079D0: nop
+    // 0x100079D0: nop
 
     after_20:
     // 0x150079D4: jal         0x150186D0
@@ -17622,6 +17638,14 @@ L_150079CC:
     // 0x150079DC: b           L_15007968
     // 0x150079E0: lbu         $t9, 0x0($s0)
     ctx->r25 = MEM_BU(ctx->r16, 0X0);
+    {
+        static int engine_frames = 0;
+        engine_frames++;
+        if (engine_frames <= 10 || engine_frames % 60 == 0) {
+            printf("[Conker Engine] Frame #%d processed in func_15007830 (state=%d)\n", engine_frames, (int)ctx->r25);
+            fflush(stdout);
+        }
+    }
         goto L_15007968;
     // 0x150079E0: lbu         $t9, 0x0($s0)
     ctx->r25 = MEM_BU(ctx->r16, 0X0);

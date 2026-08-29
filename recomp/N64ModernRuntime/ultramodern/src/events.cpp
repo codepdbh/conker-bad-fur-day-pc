@@ -474,12 +474,11 @@ static void dump_framebuffer_bmp(uint8_t* rdram, uint32_t fb_addr, int w, int h,
     std::vector<uint8_t> row(row_padded, 0);
     for (int y = h - 1; y >= 0; y--) {
         for (int x = 0; x < w; x++) {
-            uint16_t pix = src[y * w + x];
-            // Big endian byte swap if loaded as uint16
-            uint16_t be = (pix >> 8) | (pix << 8);
-            uint8_t r = ((be >> 11) & 0x1F) << 3;
-            uint8_t g = ((be >> 6) & 0x1F) << 3;
-            uint8_t b = ((be >> 1) & 0x1F) << 3;
+            uint32_t offset = (phys + (y * w + x) * 2) ^ 2;
+            uint16_t pix = *(uint16_t*)&rdram[offset];
+            uint8_t r = ((pix >> 11) & 0x1F) << 3;
+            uint8_t g = ((pix >> 6) & 0x1F) << 3;
+            uint8_t b = ((pix >> 1) & 0x1F) << 3;
             row[x * 3 + 0] = b;
             row[x * 3 + 1] = g;
             row[x * 3 + 2] = r;

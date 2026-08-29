@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -3260,8 +3261,7 @@ L_150AB3E8:
     // 0x150AB404: jr          $t1
     // 0x150AB408: nop
 
-    LOOKUP_FUNC(ctx->r9)(rdram, ctx);
-    return;
+    goto L_150AB4A8;
     // 0x150AB408: nop
 
     // 0x150AB40C: lw          $t1, 0x140($sp)
@@ -3364,6 +3364,7 @@ L_150AB3E8:
         goto L_150AB540;
     // 0x150AB4A4: nop
 
+L_150AB4A8:
     // 0x150AB4A8: mov.s       $f1, $f0
     CHECK_FR(ctx, 1);
     CHECK_FR(ctx, 0);
@@ -3600,7 +3601,7 @@ L_150AB554:
     // 0x150AB604: jr          $t1
     // 0x150AB608: nop
 
-    LOOKUP_FUNC(ctx->r9)(rdram, ctx);
+    static_5_150AB644(rdram, ctx);
     return;
     // 0x150AB608: nop
 
@@ -4264,8 +4265,8 @@ L_150AB980:
     // 0x150AB984: jr          $t0
     // 0x150AB988: lui         $t0, 0x800E
     ctx->r8 = S32(0X800E << 16);
-    LOOKUP_FUNC(ctx->r8)(rdram, ctx);
-    return;
+    goto L_150AB988;
+L_150AB988:
     // 0x150AB988: lui         $t0, 0x800E
     ctx->r8 = S32(0X800E << 16);
     // 0x150AB98C: lw          $t0, -0x41C4($t0)
@@ -5902,6 +5903,8 @@ L_150AC160:
     MEM_W(0X38, ctx->r29) = ctx->f_odd[(7 - 1) * 2];
     // 0x150AC1B0: swc1        $f8, 0x3C($sp)
     MEM_W(0X3C, ctx->r29) = ctx->f8.u32l;
+    static_5_150AC1B4(rdram, ctx);
+    return;
 ;}
 RECOMP_FUNC void static_5_150AC290(uint8_t* rdram, recomp_context* ctx) {
     uint64_t hi = 0, lo = 0, result = 0;
@@ -5934,8 +5937,7 @@ RECOMP_FUNC void static_5_150AC2A0(uint8_t* rdram, recomp_context* ctx) {
     // 0x150AC2A4: jr          $t0
     // 0x150AC2A8: nop
 
-    LOOKUP_FUNC(ctx->r8)(rdram, ctx);
-    return;
+    // fallthrough to 0x150AC2AC
     // 0x150AC2A8: nop
 
     // 0x150AC2AC: lwc1        $f0, 0x34($sp)
@@ -5967,8 +5969,11 @@ RECOMP_FUNC void static_5_150AC2A0(uint8_t* rdram, recomp_context* ctx) {
 
     // 0x150AC2D4: sw          $zero, 0x20($t0)
     MEM_W(0X20, ctx->r8) = 0;
+    static_5_150AC2D8(rdram, ctx);
+    return;
 ;}
 RECOMP_FUNC void static_5_150AC2D8(uint8_t* rdram, recomp_context* ctx) {
+    printf("[static_5_150AC2D8] enter, sp=%08X\n", ctx->r29); fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x150AC2D8: lw          $s0, 0x170($sp)
@@ -6133,6 +6138,8 @@ RECOMP_FUNC void static_5_150AC1B4(uint8_t* rdram, recomp_context* ctx) {
     ctx->r8 = S32(0X150B << 16);
     // 0x150AC1C0: addiu       $t0, $t0, -0x4910
     ctx->r8 = ADD32(ctx->r8, -0X4910);
+    func_150AC1C4(rdram, ctx);
+    return;
 ;}
 RECOMP_FUNC void static_5_150A5790(uint8_t* rdram, recomp_context* ctx) {
     uint64_t hi = 0, lo = 0, result = 0;

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -25991,6 +25992,7 @@ L_1507CD58:
 
 ;}
 RECOMP_FUNC void func_150AB1F0(uint8_t* rdram, recomp_context* ctx) {
+    printf("[func_150AB1F0] enter: a0=%08X, a1=%08X, a2=%08X, a3=%08X, sp=%08X\n", ctx->r4, ctx->r5, ctx->r6, ctx->r7, ctx->r29); fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x150AB1F0: addiu       $sp, $sp, -0x268
@@ -26103,6 +26105,7 @@ RECOMP_FUNC void func_150AB1F0(uint8_t* rdram, recomp_context* ctx) {
     // 0x150AB2C0: nop
 
     after_0:
+    printf("[func_150AB1F0] after_0: func_1507C3E0 returned\n"); fflush(stdout);
     // 0x150AB2C4: addiu       $s1, $zero, 0x0
     ctx->r17 = ADD32(0, 0X0);
     // 0x150AB2C8: lui         $t0, 0x800E
@@ -26163,6 +26166,7 @@ RECOMP_FUNC void func_150AB1F0(uint8_t* rdram, recomp_context* ctx) {
     // 0x150AB31C: nop
 
     after_1:
+    printf("[func_150AB1F0] after_1: static_5_150A64C8 returned v0=%08X\n", ctx->r2); fflush(stdout);
     // 0x150AB320: beq         $v0, $zero, L_150AC2D8
     if (ctx->r2 == 0) {
         // 0x150AB324: nop
@@ -26309,8 +26313,7 @@ L_150AB3E8:
     // 0x150AB404: jr          $t1
     // 0x150AB408: nop
 
-    LOOKUP_FUNC(ctx->r9)(rdram, ctx);
-    return;
+    goto L_150AB4A8;
     // 0x150AB408: nop
 
     // 0x150AB40C: lw          $t1, 0x140($sp)
@@ -26413,6 +26416,7 @@ L_150AB3E8:
         goto L_150AB540;
     // 0x150AB4A4: nop
 
+L_150AB4A8:
     // 0x150AB4A8: mov.s       $f1, $f0
     CHECK_FR(ctx, 1);
     CHECK_FR(ctx, 0);
@@ -26649,8 +26653,7 @@ L_150AB554:
     // 0x150AB604: jr          $t1
     // 0x150AB608: nop
 
-    LOOKUP_FUNC(ctx->r9)(rdram, ctx);
-    return;
+    goto L_150AB644;
     // 0x150AB608: nop
 
     // 0x150AB60C: lwc1        $f20, 0x40($a3)
@@ -27302,8 +27305,8 @@ L_150AB980:
     // 0x150AB984: jr          $t0
     // 0x150AB988: lui         $t0, 0x800E
     ctx->r8 = S32(0X800E << 16);
-    LOOKUP_FUNC(ctx->r8)(rdram, ctx);
-    return;
+    goto L_150AB988;
+L_150AB988:
     // 0x150AB988: lui         $t0, 0x800E
     ctx->r8 = S32(0X800E << 16);
     // 0x150AB98C: lw          $t0, -0x41C4($t0)

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -20320,6 +20321,8 @@ L_1512547C:
 
 ;}
 RECOMP_FUNC void func_15044380(uint8_t* rdram, recomp_context* ctx) {
+    printf("[func_15044380] enter: a0=%08X, a1=%08X, a2=%08X, a3=%08X, sp=%08X\n", ctx->r4, ctx->r5, ctx->r6, ctx->r7, ctx->r29);
+    fflush(stdout);
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
     // 0x15044380: addiu       $sp, $sp, -0x68
@@ -20385,6 +20388,8 @@ RECOMP_FUNC void func_15044380(uint8_t* rdram, recomp_context* ctx) {
     ctx->r22 = 0 | 0;
     // 0x150443EC: sb          $zero, 0x275($s2)
     MEM_B(0X275, ctx->r18) = 0;
+    printf("[func_15044380] calling func_15044660, a0=%08X\n", ctx->r18);
+    fflush(stdout);
     // 0x150443F0: jal         0x15044660
     // 0x150443F4: or          $a0, $s2, $zero
     ctx->r4 = ctx->r18 | 0;
@@ -20393,6 +20398,8 @@ RECOMP_FUNC void func_15044380(uint8_t* rdram, recomp_context* ctx) {
     // 0x150443F4: or          $a0, $s2, $zero
     ctx->r4 = ctx->r18 | 0;
     after_0:
+    printf("[func_15044380] returned from func_15044660, starting loop 1\n");
+    fflush(stdout);
     // 0x150443F8: lui         $t6, 0x800D
     ctx->r14 = S32(0X800D << 16);
     // 0x150443FC: lbu         $t6, -0x422D($t6)
@@ -20418,6 +20425,8 @@ RECOMP_FUNC void func_15044380(uint8_t* rdram, recomp_context* ctx) {
 L_15044424:
     // 0x15044424: lbu         $t7, 0x0($s1)
     ctx->r15 = MEM_BU(ctx->r17, 0X0);
+    printf("[func_15044380] loop1: s0=%d, s1=%08X, t7=%02X\n", (int32_t)ctx->r16, ctx->r17, ctx->r15);
+    fflush(stdout);
     // 0x15044428: bnel        $s3, $t7, L_1504447C
     if (ctx->r19 != ctx->r15) {
         // 0x1504442C: addiu       $s0, $s0, -0x1
@@ -20454,6 +20463,8 @@ L_15044448:
     // 0x15044448: jal         0x1510F800
     // 0x1504444C: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15044380] calling func_1510F800, a0=%08X\n", ctx->r4);
+    fflush(stdout);
     func_1510F800(rdram, ctx);
         goto after_1;
     // 0x1504444C: or          $a0, $s0, $zero
@@ -20486,6 +20497,8 @@ L_15044448:
     // 0x1504446C: jal         0x150AB1F0
     // 0x15044470: sw          $s7, 0x10($sp)
     MEM_W(0X10, ctx->r29) = ctx->r23;
+    printf("[func_15044380] calling func_150AB1F0\n");
+    fflush(stdout);
     func_150AB1F0(rdram, ctx);
         goto after_2;
     // 0x15044470: sw          $s7, 0x10($sp)
@@ -20504,6 +20517,8 @@ L_1504447C:
     }
     // 0x15044480: addiu       $s1, $s1, -0x1
     ctx->r17 = ADD32(ctx->r17, -0X1);
+    printf("[func_15044380] loop1 complete, starting loop 2\n");
+    fflush(stdout);
     // 0x15044484: lw          $t1, 0x7C($sp)
     ctx->r9 = MEM_W(ctx->r29, 0X7C);
     // 0x15044488: lui         $s1, 0x8009
@@ -20521,6 +20536,8 @@ L_1504447C:
 L_15044498:
     // 0x15044498: lbu         $t2, 0x0($s1)
     ctx->r10 = MEM_BU(ctx->r17, 0X0);
+    printf("[func_15044380] loop2: s0=%d, s1=%08X, t2=%02X\n", (int32_t)ctx->r16, ctx->r17, ctx->r10);
+    fflush(stdout);
     // 0x1504449C: bnel        $s3, $t2, L_150444D4
     if (ctx->r19 != ctx->r10) {
         // 0x150444A0: addiu       $s0, $s0, 0x1
@@ -20534,6 +20551,8 @@ L_15044498:
     // 0x150444A4: jal         0x1510F800
     // 0x150444A8: or          $a0, $s0, $zero
     ctx->r4 = ctx->r16 | 0;
+    printf("[func_15044380] loop2 calling func_1510F800, a0=%08X\n", ctx->r4);
+    fflush(stdout);
     func_1510F800(rdram, ctx);
         goto after_3;
     // 0x150444A8: or          $a0, $s0, $zero
@@ -20566,6 +20585,8 @@ L_15044498:
     // 0x150444C8: jal         0x150AC3E4
     // 0x150444CC: sw          $zero, 0x10($sp)
     MEM_W(0X10, ctx->r29) = 0;
+    printf("[func_15044380] loop2 calling func_150AC3E4\n");
+    fflush(stdout);
     func_150AC3E4(rdram, ctx);
         goto after_4;
     // 0x150444CC: sw          $zero, 0x10($sp)
@@ -20583,6 +20604,8 @@ L_150444D4:
     // 0x150444D8: addiu       $s1, $s1, 0x1
     ctx->r17 = ADD32(ctx->r17, 0X1);
 L_150444DC:
+    printf("[func_15044380] calling func_1510F800 at L_150444DC\n");
+    fflush(stdout);
     // 0x150444DC: jal         0x1510F800
     // 0x150444E0: or          $a0, $zero, $zero
     ctx->r4 = 0 | 0;
@@ -20626,6 +20649,8 @@ L_150444DC:
     ctx->r22 = MEM_W(ctx->r29, 0X4C);
     // 0x15044520: lw          $s7, 0x50($sp)
     ctx->r23 = MEM_W(ctx->r29, 0X50);
+    printf("[func_15044380] exit: v0=%08X\n", ctx->r2);
+    fflush(stdout);
     // 0x15044524: jr          $ra
     // 0x15044528: addiu       $sp, $sp, 0x68
     ctx->r29 = ADD32(ctx->r29, 0X68);

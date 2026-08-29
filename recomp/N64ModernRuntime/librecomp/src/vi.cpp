@@ -35,10 +35,18 @@ extern "C" void osViGetNextFramebuffer_recomp(uint8_t* rdram, recomp_context* ct
 }
 
 extern "C" void osViSwapBuffer_recomp(uint8_t* rdram, recomp_context* ctx) {
+    static int swap_count = 0;
+    if (swap_count < 30 || (swap_count % 60 == 0)) {
+        printf("[vi] osViSwapBuffer #%d: fb=0x%08X\n", swap_count, (uint32_t)ctx->r4);
+        fflush(stdout);
+    }
+    swap_count++;
     osViSwapBuffer(rdram, (int32_t)ctx->r4);
 }
 
 extern "C" void osViSetMode_recomp(uint8_t* rdram, recomp_context* ctx) {
+    printf("[vi] osViSetMode: mode_ptr=0x%08X\n", (uint32_t)ctx->r4);
+    fflush(stdout);
     osViSetMode(rdram, (int32_t)ctx->r4);
 }
 

@@ -198,10 +198,8 @@ void resume_thread(OSThread* t) {
 }
 
 void run_next_thread(RDRAM_ARG1) {
-    if (ultramodern::thread_queue_empty(PASS_RDRAM ultramodern::running_queue)) {
-        fprintf(stderr, "[Scheduling Error] No threads left to run in running_queue!\n");
-        fflush(stderr);
-        throw std::runtime_error("No threads left to run!\n");
+    while (ultramodern::thread_queue_empty(PASS_RDRAM ultramodern::running_queue)) {
+        ultramodern::wait_for_external_message_timed(PASS_RDRAM 1);
     }
 
     OSThread* to_run = TO_PTR(OSThread, ultramodern::thread_queue_pop(PASS_RDRAM ultramodern::running_queue));
