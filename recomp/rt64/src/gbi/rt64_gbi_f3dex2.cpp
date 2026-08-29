@@ -157,6 +157,17 @@ namespace RT64 {
             // TODO
         }
 
+        void tri4(State *state, DisplayList **dl) {
+            uint8_t v0 = (*dl)->p0(16, 8) / 2;
+            uint8_t v1 = (*dl)->p0(8, 8) / 2;
+            uint8_t v2 = (*dl)->p0(0, 8) / 2;
+            uint8_t v3 = (*dl)->p1(24, 8) / 2;
+            uint8_t v4 = (*dl)->p1(16, 8) / 2;
+            uint8_t v5 = (*dl)->p1(8, 8) / 2;
+            state->rsp->drawIndexedTri(v0, v1, v2);
+            state->rsp->drawIndexedTri(v3, v4, v5);
+        }
+
         void reset(State *state) {
             state->rsp->setClipRatioAll(2U);
         }
@@ -199,6 +210,8 @@ namespace RT64 {
             gbi->map[F3DEX2_G_TRI1] = &tri1;
             gbi->map[F3DEX2_G_TRI2] = &tri2;
             gbi->map[F3DEX2_G_QUAD] = &quad;
+            gbi->map[0x07] = &tri4;
+            gbi->map[0x0A] = &GBI_EXTENDED::noOpHook;
             gbi->map[F3DEX2_G_LINE3D] = &line3D;
             gbi->map[G_RDPSETOTHERMODE] = &setOtherMode;
             gbi->map[G_SETCIMG] = &GBI_F3D::setColorImage;

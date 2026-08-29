@@ -371,6 +371,54 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 #endif
 
+static SDL_AudioDeviceID g_audio_device = 0;
+static uint32_t g_audio_frequency = 48000;
+
+static void audio_set_frequency(uint32_t freq) {
+    if (freq == 0) freq = 48000;
+    if (g_audio_device != 0 && g_audio_frequency == freq) return;
+
+    if (g_audio_device != 0) {
+        SDL_CloseAudioDevice(g_audio_device);
+        g_audio_device = 0;
+    }
+
+    g_audio_frequency = freq;
+    SDL_AudioSpec wanted, have;
+    std::memset(&wanted, 0, sizeof(wanted));
+    wanted.freq = freq;
+    wanted.format = AUDIO_S16SYS;
+    wanted.channels = 2;
+    wanted.samples = 1024;
+    wanted.callback = nullptr;
+
+    g_audio_device = SDL_OpenAudioDevice(nullptr, 0, &wanted, &have, 0);
+    if (g_audio_device != 0) {
+        SDL_PauseAudioDevice(g_audio_device, 0);
+        std::cout << "[Conker Audio] SDL2 Audio active (" << have.freq << " Hz, " << (int)have.channels << " ch).\n" << std::flush;
+    }
+}
+
+static void audio_queue_samples(int16_t* samples, size_t count) {
+    if (g_audio_device == 0) {
+        audio_set_frequency(g_audio_frequency);
+    }
+    if (g_audio_device != 0 && samples != nullptr && count > 0) {
+        std::vector<int16_t> swapped(count);
+        for (size_t i = 0; i < count; i++) {
+            uint16_t val = static_cast<uint16_t>(samples[i]);
+            swapped[i] = static_cast<int16_t>((val >> 8) | (val << 8));
+        }
+        SDL_QueueAudio(g_audio_device, swapped.data(), (Uint32)(count * sizeof(int16_t)));
+    }
+}
+
+static size_t audio_get_frames_remaining() {
+    if (g_audio_device == 0) return 0;
+    Uint32 bytes_queued = SDL_GetQueuedAudioSize(g_audio_device);
+    return bytes_queued / (2 * sizeof(int16_t));
+}
+
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
     AddVectoredExceptionHandler(1, VectoredCrashHandler);
@@ -395,6 +443,10 @@ int main(int argc, char* argv[]) {
     std::cout << "      Conker's Bad Fur Day - Native PC Port         \n";
     std::cout << "      Recompiled with N64Recomp Technology          \n";
     std::cout << "====================================================\n\n" << std::flush;
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
+        std::cerr << "[SDL Warning] SDL_Init failed: " << SDL_GetError() << "\n" << std::flush;
+    }
 
     std::vector<std::string> candidate_paths;
 
@@ -550,7 +602,11 @@ int main(int argc, char* argv[]) {
         }
     };
 
-    ultramodern::audio_callbacks_t audio_callbacks{};
+    ultramodern::audio_callbacks_t audio_callbacks{
+        .queue_samples = audio_queue_samples,
+        .get_frames_remaining = audio_get_frames_remaining,
+        .set_frequency = audio_set_frequency
+    };
     ultramodern::input::callbacks_t input_callbacks{
         .poll_input = []() {},
         .get_input = [](int controller, uint16_t* buttons, float* stick_x, float* stick_y) -> bool {
