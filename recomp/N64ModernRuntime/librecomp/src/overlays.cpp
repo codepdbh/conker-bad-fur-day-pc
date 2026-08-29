@@ -368,12 +368,14 @@ extern "C" recomp_func_t * get_function(int32_t addr) {
     }
 
     uint32_t addr_u = (uint32_t)addr;
+    uint32_t offset_24 = addr_u & 0x00FFFFFF;
+
+    // First pass: exact entrypoint match
     for (size_t sec_i = 0; sec_i < sections_info.num_code_sections; sec_i++) {
         const SectionTableEntry& sec = sections_info.code_sections[sec_i];
-        
-        // Match if addr falls into section's ram range
-        if (addr_u >= sec.ram_addr && addr_u < sec.ram_addr + sec.size) {
-            uint32_t offset = addr_u - sec.ram_addr;
+        uint32_t sec_offset_24 = sec.ram_addr & 0x00FFFFFF;
+        if (offset_24 >= sec_offset_24 && offset_24 < sec_offset_24 + sec.size) {
+            uint32_t offset = offset_24 - sec_offset_24;
             for (size_t f_i = 0; f_i < sec.num_funcs; f_i++) {
                 if (sec.funcs[f_i].offset == offset) {
                     func_map[addr] = sec.funcs[f_i].func;
@@ -381,14 +383,18 @@ extern "C" recomp_func_t * get_function(int32_t addr) {
                 }
             }
         }
+    }
 
-        // Match lower 24 bits (KSEG0/KSEG1 alias)
-        uint32_t offset_24 = addr_u & 0x00FFFFFF;
+    // Second pass: enclosing function range match for interior jump labels / targets
+    for (size_t sec_i = 0; sec_i < sections_info.num_code_sections; sec_i++) {
+        const SectionTableEntry& sec = sections_info.code_sections[sec_i];
         uint32_t sec_offset_24 = sec.ram_addr & 0x00FFFFFF;
         if (offset_24 >= sec_offset_24 && offset_24 < sec_offset_24 + sec.size) {
             uint32_t offset = offset_24 - sec_offset_24;
             for (size_t f_i = 0; f_i < sec.num_funcs; f_i++) {
-                if (sec.funcs[f_i].offset == offset) {
+                uint32_t f_start = sec.funcs[f_i].offset;
+                uint32_t f_size = sec.funcs[f_i].rom_size;
+                if (offset >= f_start && (f_size > 0 && offset < f_start + f_size)) {
                     func_map[addr] = sec.funcs[f_i].func;
                     return sec.funcs[f_i].func;
                 }

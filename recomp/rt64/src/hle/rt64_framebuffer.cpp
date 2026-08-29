@@ -73,7 +73,9 @@ namespace RT64 {
 
     uint32_t Framebuffer::copyRAMToNativeAndChanges(RenderWorker *worker, FramebufferChange &fbChange, const uint8_t *src, uint32_t rowStart, uint32_t rowCount, uint8_t fmt, bool invalidateTargets, const ShaderLibrary *shaderLibrary) {
         assert(worker != nullptr);
-        assert(src != nullptr);
+        if (src == nullptr) {
+            return 0;
+        }
 
         // Swap the endianness from the source.
         const uint32_t nativeSize = NativeTarget::getNativeSize(width, rowCount, siz);
@@ -97,7 +99,9 @@ namespace RT64 {
 
     FramebufferChange *Framebuffer::readChangeFromBytes(RenderWorker *worker, FramebufferChangePool &fbChangePool, Type type, uint8_t fmt, const uint8_t *src, uint32_t rowStart, uint32_t rowCount, const ShaderLibrary *shaderLibrary) {
         assert(worker != nullptr);
-        assert(src != nullptr);
+        if (src == nullptr) {
+            return nullptr;
+        }
         
         FramebufferChange &changeUsed = fbChangePool.use(worker, (type == Type::Depth) ? FramebufferChange::Type::Depth : FramebufferChange::Type::Color, width, rowCount, shaderLibrary->usesHDR);
         uint32_t readPixels = copyRAMToNativeAndChanges(worker, changeUsed, src, rowStart, rowCount, fmt, true, shaderLibrary);

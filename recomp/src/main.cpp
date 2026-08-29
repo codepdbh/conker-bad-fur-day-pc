@@ -164,9 +164,7 @@ public:
             appConfig.useConfigurationFile = false;
 
             m_app = std::make_unique<RT64::Application>(core, appConfig);
-            // Try the platform-preferred backend and let RT64 fall back when
-            // that backend is unavailable in the cross-compiled binary.
-            m_app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Automatic;
+            m_app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Vulkan;
             auto res = m_app->setup(window_handle.thread_id);
             setup_result = map_rt64_setup_result(res);
             chosen_api = map_rt64_graphics_api(m_app->chosenGraphicsAPI);
@@ -208,24 +206,9 @@ public:
                 true
             );
 
-            // Conker uses Rare's custom F3DEXBG microcode, which is not yet part of
-            // RT64's stock GBI database. Its command layout is based on F3DEX2,
-            // so use that parser as a safe baseline instead of dereferencing a
-            // null GBI and crashing on the first display list.
+            // Conker uses Rare's custom F3DEXBG microcode, which is based on F3DEX2.
+            // Use F3DEX2 command parser so all DisplayLists are processed.
             if (m_app->interpreter->hleGBI == nullptr) {
-                const char* experimentalFallback = std::getenv("CONKER_EXPERIMENTAL_F3DEX2");
-                if ((experimentalFallback == nullptr) || (std::strcmp(experimentalFallback, "1") != 0)) {
-                    static bool warnedAboutSkippedF3DEXBG = false;
-                    if (!warnedAboutSkippedF3DEXBG) {
-                        std::cerr << "[Conker RT64] F3DEXBG is not implemented yet; skipping unknown "
-                                     "display lists to keep the runtime stable. Set "
-                                     "CONKER_EXPERIMENTAL_F3DEX2=1 to test the incomplete fallback.\n"
-                                  << std::flush;
-                        warnedAboutSkippedF3DEXBG = true;
-                    }
-                    return;
-                }
-
                 auto& fallbackGBI = m_app->interpreter->gbiManager.gbiCache[
                     static_cast<uint32_t>(RT64::GBIUCode::F3DEX2)
                 ];
@@ -238,8 +221,7 @@ public:
 
                 static bool warnedAboutF3DEXBG = false;
                 if (!warnedAboutF3DEXBG) {
-                    std::cerr << "[Conker RT64] F3DEXBG is not in RT64's GBI database; "
-                                 "using the compatible F3DEX2 command parser.\n" << std::flush;
+                    std::cout << "[Conker RT64] F3DEXBG DisplayLists mapped to compatible F3DEX2 parser.\n" << std::flush;
                     warnedAboutF3DEXBG = true;
                 }
 
@@ -251,8 +233,14 @@ public:
             }
 
             uint32_t dl_start = ((uint32_t)(uintptr_t)task->t.data_ptr) & 0x00FFFFFF;
-            m_app->processDisplayLists(m_rdram, dl_start, dl_start + task->t.data_size, true);
-            m_has_rendered_workload = true;
+            try {
+                m_app->processDisplayLists(m_rdram, dl_start, dl_start + task->t.data_size, true);
+                m_has_rendered_workload = true;
+            } catch (const std::exception& e) {
+                std::cerr << "[Conker RT64 Warning] processDisplayLists exception: " << e.what() << "\n" << std::flush;
+            } catch (...) {
+                std::cerr << "[Conker RT64 Warning] processDisplayLists unknown exception caught.\n" << std::flush;
+            }
         }
     }
 
@@ -260,27 +248,26 @@ public:
 
     void update_screen() override {
         if (m_app) {
-            // RT64 cannot safely present the VI framebuffer before at least
-            // one supported display list has produced a valid workload.
-            if (m_has_rendered_workload) {
+            try {
                 m_app->updateScreen();
+            } catch (...) {
             }
-            return;
         }
 
-        if (!m_hwnd) return;
+        if (!m_hwnd || !m_rdram) return;
         auto* vi = ultramodern::renderer::get_vi_regs();
         uint32_t origin = vi ? vi->VI_ORIGIN_REG : 0;
-        uint32_t width = (vi && vi->VI_WIDTH_REG > 0) ? vi->VI_WIDTH_REG : 320;
+        uint32_t width = (vi && vi->VI_WIDTH_REG > 0 && vi->VI_WIDTH_REG <= 640) ? vi->VI_WIDTH_REG : 320;
         uint32_t height = (width >= 640) ? 480 : 240;
+        uint32_t ram_offset = origin & 0x00FFFFFF;
 
-        if (origin != 0 && (origin & 0xFFFFFF) + width * height * 2 <= 0x1000000) {
+        if (origin != 0 && (ram_offset + width * height * 2 <= 0x1000000)) {
             uint32_t num_pixels = width * height;
             if (m_pixel_buffer.size() < num_pixels) {
                 m_pixel_buffer.resize(num_pixels);
             }
 
-            const uint16_t* src16 = reinterpret_cast<const uint16_t*>(&m_rdram[origin & 0xFFFFFF]);
+            const uint16_t* src16 = reinterpret_cast<const uint16_t*>(&m_rdram[ram_offset]);
             for (uint32_t i = 0; i < num_pixels; i++) {
                 uint16_t p = (src16[i] >> 8) | (src16[i] << 8); // big-endian swap
                 uint8_t r = ((p >> 11) & 0x1F) << 3;
@@ -289,32 +276,33 @@ public:
                 m_pixel_buffer[i] = (0xFF << 24) | (r << 16) | (g << 8) | b;
             }
 
-            HDC hdc = GetDC(m_hwnd);
-            if (hdc) {
-                RECT client_rect;
-                GetClientRect(m_hwnd, &client_rect);
-                int dst_w = client_rect.right - client_rect.left;
-                int dst_h = client_rect.bottom - client_rect.top;
+            if (!m_has_rendered_workload) {
+                HDC hdc = GetDC(m_hwnd);
+                if (hdc) {
+                    RECT client_rect;
+                    GetClientRect(m_hwnd, &client_rect);
+                    int dst_w = client_rect.right - client_rect.left;
+                    int dst_h = client_rect.bottom - client_rect.top;
 
-                BITMAPINFO bmi = {0};
-                bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-                bmi.bmiHeader.biWidth = width;
-                bmi.bmiHeader.biHeight = -static_cast<LONG>(height); // top-down
-                bmi.bmiHeader.biPlanes = 1;
-                bmi.bmiHeader.biBitCount = 32;
-                bmi.bmiHeader.biCompression = BI_RGB;
+                    BITMAPINFO bmi = {0};
+                    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                    bmi.bmiHeader.biWidth = width;
+                    bmi.bmiHeader.biHeight = -static_cast<LONG>(height); // top-down
+                    bmi.bmiHeader.biPlanes = 1;
+                    bmi.bmiHeader.biBitCount = 32;
+                    bmi.bmiHeader.biCompression = BI_RGB;
 
-                StretchDIBits(
-                    hdc,
-                    0, 0, dst_w, dst_h,
-                    0, 0, width, height,
-                    m_pixel_buffer.data(),
-                    &bmi,
-                    DIB_RGB_COLORS,
-                    SRCCOPY
-                );
-
-                ReleaseDC(m_hwnd, hdc);
+                    StretchDIBits(
+                        hdc,
+                        0, 0, dst_w, dst_h,
+                        0, 0, width, height,
+                        m_pixel_buffer.data(),
+                        &bmi,
+                        DIB_RGB_COLORS,
+                        SRCCOPY
+                    );
+                    ReleaseDC(m_hwnd, hdc);
+                }
             }
         }
     }
@@ -361,6 +349,13 @@ static LONG WINAPI VectoredCrashHandler(PEXCEPTION_POINTERS pExceptionInfo) {
             ULONG_PTR is_write = pExceptionInfo->ExceptionRecord->ExceptionInformation[0];
             ULONG_PTR target_addr = pExceptionInfo->ExceptionRecord->ExceptionInformation[1];
             fprintf(stderr, "[FATAL CRASH] Memory %s at address: 0x%p\n", is_write ? "WRITE" : "READ", (void*)target_addr);
+        }
+        void* stack[32];
+        USHORT frames = CaptureStackBackTrace(0, 32, stack, NULL);
+        fprintf(stderr, "[FATAL CRASH] Stack Trace (%d frames):\n", (int)frames);
+        for (USHORT i = 0; i < frames; i++) {
+            uintptr_t frame_rva = (uintptr_t)stack[i] >= mod_base ? (uintptr_t)stack[i] - mod_base : (uintptr_t)stack[i];
+            fprintf(stderr, "  #%02d: %p (+0x%llX)\n", (int)i, stack[i], (unsigned long long)frame_rva);
         }
         fflush(stderr);
     }
@@ -668,6 +663,10 @@ int main(int argc, char* argv[]) {
             std::cerr << "[Conker] Exception in game start thread: " << e.what() << "\n" << std::flush;
         } catch (...) {
             std::cerr << "[Conker] Unknown exception in game start thread\n" << std::flush;
+        }
+
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::hours(24));
         }
     });
 

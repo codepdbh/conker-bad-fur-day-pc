@@ -134,9 +134,13 @@ namespace RT64 {
             readBuffer.readDescSet->setBuffer(readBuffer.readDescSet->gCurInput, previousReadBuffer->nativeBuffer.get(), previousReadBuffer->nativeBufferSize, previousBufferView);
         }
 
-        void *dstData = readBuffer.nativeUploadBuffer->map();
-        memcpy(dstData, data, bufferSize);
-        readBuffer.nativeUploadBuffer->unmap();
+        if (readBuffer.nativeUploadBuffer != nullptr) {
+            void *dstData = readBuffer.nativeUploadBuffer->map();
+            if ((dstData != nullptr) && (data != nullptr)) {
+                memcpy(dstData, data, bufferSize);
+            }
+            readBuffer.nativeUploadBuffer->unmap();
+        }
 
         if (hasCurrentResource) {
             // Clear the change count resource with a compute shader.

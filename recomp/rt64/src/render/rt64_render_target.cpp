@@ -87,14 +87,18 @@ namespace RT64 {
         
         RenderClearValue clearValue = RenderClearValue::Color(RenderColor(), format);
         texture = worker->device->createTexture(RenderTextureDesc::ColorTarget(width, height, format, multisampling, &clearValue));
-        textureView = texture->createTextureView(RenderTextureViewDesc::Texture2D(format));
-        texture->setName("Render Target Color #" + std::to_string(addressForName));
-        textureRevision++;
+        if (texture) {
+            textureView = texture->createTextureView(RenderTextureViewDesc::Texture2D(format));
+            texture->setName("Render Target Color #" + std::to_string(addressForName));
+            textureRevision++;
+        }
 
         if (multisampling.sampleCount > 1) {
             resolvedTexture = worker->device->createTexture(RenderTextureDesc::ColorTarget(width, height, format, RenderMultisampling(), &clearValue));
-            resolvedTextureView = resolvedTexture->createTextureView(RenderTextureViewDesc::Texture2D(format));
-            resolvedTexture->setName("Render Target Color Resolved #" + std::to_string(addressForName));
+            if (resolvedTexture) {
+                resolvedTextureView = resolvedTexture->createTextureView(RenderTextureViewDesc::Texture2D(format));
+                resolvedTexture->setName("Render Target Color Resolved #" + std::to_string(addressForName));
+            }
         }
     }
 
@@ -111,9 +115,11 @@ namespace RT64 {
         
         RenderClearValue clearValue = RenderClearValue::Depth(RenderDepth(), RenderFormat::D32_FLOAT);
         texture = worker->device->createTexture(RenderTextureDesc::DepthTarget(width, height, format, multisampling, &clearValue));
-        textureView = texture->createTextureView(RenderTextureViewDesc::Texture2D(format));
-        texture->setName("Render Target Depth #" + std::to_string(addressForName));
-        textureRevision++;
+        if (texture) {
+            textureView = texture->createTextureView(RenderTextureViewDesc::Texture2D(format));
+            texture->setName("Render Target Depth #" + std::to_string(addressForName));
+            textureRevision++;
+        }
     }
 
     void RenderTarget::setupDummy(RenderWorker *worker) {
@@ -121,14 +127,16 @@ namespace RT64 {
         
         if (dummyTexture == nullptr) {
             dummyTexture = worker->device->createTexture(RenderTextureDesc::ColorTarget(width, height, colorBufferFormat(usesHDR), multisampling));
-            dummyTexture->setName("Render Target Dummy");
+            if (dummyTexture) {
+                dummyTexture->setName("Render Target Dummy");
+            }
         }
     }
 
     void RenderTarget::setupColorFramebuffer(RenderWorker *worker) {
         assert(worker != nullptr);
 
-        if (textureFramebuffer == nullptr) {
+        if (textureFramebuffer == nullptr && texture != nullptr) {
             const RenderTexture *colorTexture = texture.get();
             textureFramebuffer = worker->device->createFramebuffer(RenderFramebufferDesc(&colorTexture, 1));
         }
@@ -136,9 +144,8 @@ namespace RT64 {
 
     void RenderTarget::setupResolveFramebuffer(RenderWorker *worker) {
         assert(worker != nullptr);
-        assert(resolvedTexture != nullptr);
 
-        if (resolveFramebuffer == nullptr) {
+        if (resolveFramebuffer == nullptr && resolvedTexture != nullptr) {
             const RenderTexture *colorTexture = resolvedTexture.get();
             resolveFramebuffer = worker->device->createFramebuffer(RenderFramebufferDesc(&colorTexture, 1));
         }
@@ -149,7 +156,7 @@ namespace RT64 {
 
         setupDummy(worker);
 
-        if (textureFramebuffer == nullptr) {
+        if (textureFramebuffer == nullptr && dummyTexture != nullptr && texture != nullptr) {
             const RenderTexture *colorTexture = dummyTexture.get();
             textureFramebuffer = worker->device->createFramebuffer(RenderFramebufferDesc(&colorTexture, 1, texture.get()));
         }
@@ -326,6 +333,9 @@ namespace RT64 {
         assert(worker != nullptr);
 
         setupColorFramebuffer(worker);
+        if (texture == nullptr || textureFramebuffer == nullptr) {
+            return;
+        }
 
         worker->commandList->barriers(RenderBarrierStage::GRAPHICS, RenderTextureBarrier(texture.get(), RenderTextureLayout::COLOR_WRITE));
         worker->commandList->setFramebuffer(textureFramebuffer.get());
@@ -338,6 +348,9 @@ namespace RT64 {
         assert(worker != nullptr);
 
         setupDepthFramebuffer(worker);
+        if (texture == nullptr || dummyTexture == nullptr || textureFramebuffer == nullptr) {
+            return;
+        }
         
         RenderTextureBarrier clearBarriers[] = {
             RenderTextureBarrier(texture.get(), RenderTextureLayout::DEPTH_WRITE),

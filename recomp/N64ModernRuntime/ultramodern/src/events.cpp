@@ -218,11 +218,11 @@ void vi_thread_func() {
                 
                 std::lock_guard lock{ events_context.message_mutex };
                 ViState* cur_state = events_context.vi.get_cur_state();
-                if (remaining_retraces == 0) {
+                if (remaining_retraces <= 0) {
                     if (cur_state->mq != NULLPTR) {
                         ultramodern::enqueue_external_message_src(cur_state->mq, cur_state->msg, false, ultramodern::EventMessageSource::Vi);
                     }
-                    remaining_retraces = cur_state->retrace_count;
+                    remaining_retraces = (cur_state->retrace_count > 0) ? (int)cur_state->retrace_count : 1;
                 }
                 if (events_context.ai.mq != NULLPTR) {
                     ultramodern::enqueue_external_message_src(events_context.ai.mq, events_context.ai.msg, false, ultramodern::EventMessageSource::Ai);
