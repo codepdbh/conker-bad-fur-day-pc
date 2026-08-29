@@ -493,7 +493,7 @@ namespace RT64 {
 #       endif
 
             if (isHLE) {
-                interpreter->processDisplayLists(dlStartAddress, dlStart);
+                interpreter->processDisplayLists(dlStartAddress, dlStart, dlEnd);
             }
             else {
                 interpreter->processRDPLists(dlStartAddress, dlStart, dlEnd);

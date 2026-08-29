@@ -2623,6 +2623,11 @@ L_15045D34:
 RECOMP_FUNC void func_15123070(uint8_t* rdram, recomp_context* ctx) {
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
+    // Unresolved generated callback paths can supply non-RDRAM object values.
+    // Ignore those values instead of interpreting low memory as angle data.
+    if ((uint32_t)ctx->r4 < 0x80000000u || (uint32_t)ctx->r4 >= 0x81000000u) {
+        return;
+    }
     // 0x15123070: addiu       $sp, $sp, -0x30
     ctx->r29 = ADD32(ctx->r29, -0X30);
     // 0x15123074: sw          $ra, 0x14($sp)

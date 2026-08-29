@@ -179,17 +179,11 @@ static void unregister_thread_context(const OSThread* t) {
 }
 
 void wait_for_resumed(RDRAM_ARG UltraThreadContext* thread_context) {
-    fprintf(stdout, "[Scheduling] wait_for_resumed ENTER: thread_self=0x%08X, waiting on context %p\n", (uint32_t)(uintptr_t)thread_self, (void*)thread_context);
-    fflush(stdout);
     thread_context->running.wait();
-    fprintf(stdout, "[Scheduling] wait_for_resumed POST-WAIT: thread_self=0x%08X, context %p (woke up!)\n", (uint32_t)(uintptr_t)thread_self, (void*)thread_context);
-    fflush(stdout);
 }
 
 void resume_thread(OSThread* t) {
     UltraThreadContext* ctx = get_thread_context(t);
-    fprintf(stdout, "[Scheduling] resume_thread: Resuming thread %d (context=%p)\n", t ? t->id : -1, (void*)ctx);
-    fflush(stdout);
     if (ctx != nullptr) {
         ctx->running.signal();
     } else {
@@ -206,11 +200,8 @@ void run_next_thread(RDRAM_ARG1) {
     }
 
 
-    OSThread* self = ultramodern::this_thread() ? TO_PTR(OSThread, ultramodern::this_thread()) : nullptr;
     OSThread* to_run = TO_PTR(OSThread, ultramodern::thread_queue_pop(PASS_RDRAM ultramodern::running_queue));
     UltraThreadContext* ctx = get_thread_context(to_run);
-    fprintf(stdout, "[Scheduling] run_next_thread (called by thread %d): Resuming execution of thread %d (context=%p)\n", self ? self->id : -1, to_run->id, (void*)ctx);
-    fflush(stdout);
     if (ctx != nullptr) {
         ctx->running.signal();
     } else {
@@ -220,9 +211,6 @@ void run_next_thread(RDRAM_ARG1) {
 }
 
 void ultramodern::run_next_thread_and_wait(RDRAM_ARG1) {
-    OSThread* self = ultramodern::this_thread() ? TO_PTR(OSThread, ultramodern::this_thread()) : nullptr;
-    fprintf(stdout, "[Scheduling] run_next_thread_and_wait ENTER: caller thread %d (self=0x%08X)\n", self ? self->id : -1, (uint32_t)(uintptr_t)thread_self);
-    fflush(stdout);
     if (!thread_self) {
         run_next_thread(PASS_RDRAM1);
         return;
@@ -232,14 +220,9 @@ void ultramodern::run_next_thread_and_wait(RDRAM_ARG1) {
     if (cur_context != nullptr) {
         wait_for_resumed(PASS_RDRAM cur_context);
     }
-    fprintf(stdout, "[Scheduling] run_next_thread_and_wait EXIT: resumed thread %d\n", self ? self->id : -1);
-    fflush(stdout);
 }
 
 void ultramodern::resume_thread_and_wait(RDRAM_ARG OSThread *t) {
-    OSThread* self = ultramodern::this_thread() ? TO_PTR(OSThread, ultramodern::this_thread()) : nullptr;
-    fprintf(stdout, "[Scheduling] resume_thread_and_wait ENTER: caller thread %d resuming %d\n", self ? self->id : -1, t ? t->id : -1);
-    fflush(stdout);
     if (!thread_self) {
         resume_thread(t);
         return;
@@ -249,8 +232,6 @@ void ultramodern::resume_thread_and_wait(RDRAM_ARG OSThread *t) {
     if (cur_context != nullptr) {
         wait_for_resumed(PASS_RDRAM cur_context);
     }
-    fprintf(stdout, "[Scheduling] resume_thread_and_wait EXIT: resumed thread %d\n", self ? self->id : -1);
-    fflush(stdout);
 }
 
 static void _thread_func(RDRAM_ARG PTR(OSThread) self_, PTR(thread_func_t) entrypoint, PTR(void) arg, UltraThreadContext* thread_context) {

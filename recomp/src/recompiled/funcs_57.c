@@ -28043,19 +28043,19 @@ L_150A579C:
     }
     // 0x150A5804: addiu       $at, $zero, -0x19
     ctx->r1 = ADD32(0, -0X19);
-    // 0x150A5808: beq         $t0, $at, L_150A579C
+    // 0x150A5808: beq         $t0, $at, L_150A5708
     if (ctx->r8 == ctx->r1) {
         // 0x150A580C: addiu       $at, $zero, -0x1A
         ctx->r1 = ADD32(0, -0X1A);
-            goto L_150A579C;
+            goto L_150A5708;
     }
     // 0x150A580C: addiu       $at, $zero, -0x1A
     ctx->r1 = ADD32(0, -0X1A);
-    // 0x150A5810: beq         $t0, $at, L_150A579C
+    // 0x150A5810: beq         $t0, $at, L_150A5708
     if (ctx->r8 == ctx->r1) {
         // 0x150A5814: addiu       $at, $zero, -0x21
         ctx->r1 = ADD32(0, -0X21);
-            goto L_150A579C;
+            goto L_150A5708;
     }
     // 0x150A5814: addiu       $at, $zero, -0x21
     ctx->r1 = ADD32(0, -0X21);

@@ -45,6 +45,8 @@ baserom/
 
 # Temporary and cache files
 .temp/
+.gradle/
+scratch/
 __pycache__/
 *.pyc
 .splat_cache

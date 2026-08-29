@@ -2,23 +2,17 @@
 #include "ultramodern/ultramodern.hpp"
 
 void ultramodern::schedule_running_thread(RDRAM_ARG PTR(OSThread) t_) {
-    fprintf(stdout, "[Scheduling] Adding thread %d to the running queue\n", TO_PTR(OSThread, t_)->id);
-    fflush(stdout);
     thread_queue_insert(PASS_RDRAM running_queue, t_);
     TO_PTR(OSThread, t_)->state = OSThreadState::QUEUED;
 }
 
 void swap_to_thread(RDRAM_ARG OSThread *to) {
     OSThread* self = ultramodern::this_thread() ? TO_PTR(OSThread, ultramodern::this_thread()) : nullptr;
-    fprintf(stdout, "[Scheduling] swap_to_thread: Thread %d giving execution to thread %d\n", self ? self->id : -1, to ? to->id : -1);
-    fflush(stdout);
     // Insert this thread in the running queue.
     ultramodern::thread_queue_insert(PASS_RDRAM ultramodern::running_queue, ultramodern::this_thread());
     if (self) self->state = OSThreadState::QUEUED;
     // Unpause the target thread and wait for this one to be unpaused.
     ultramodern::resume_thread_and_wait(PASS_RDRAM to);
-    fprintf(stdout, "[Scheduling] swap_to_thread: Thread %d resumed after yielding to %d\n", self ? self->id : -1, to ? to->id : -1);
-    fflush(stdout);
 }
 
 void ultramodern::check_running_queue(RDRAM_ARG1) {

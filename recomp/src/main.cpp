@@ -7,6 +7,7 @@
 #include <atomic>
 #include <memory>
 #include <exception>
+#include <cstdlib>
 #include "recomp.h"
 #include "funcs.h"
 #include "librecomp/overlays.hpp"
@@ -28,12 +29,51 @@
 #endif
 
 #include "hle/rt64_application.h"
+#include "gbi/rt64_gbi_f3dex2.h"
+#include "gbi/rt64_gbi_rdp.h"
 
 extern "C" uint8_t rdram[0x1000000];
 extern "C" uint8_t* g_rom_data = nullptr;
 extern "C" size_t g_rom_size = 0;
 extern "C" uint8_t g_mmio_dummy[0x10000] = {0};
 static std::atomic_bool g_running = true;
+
+namespace {
+alignas(16) uint8_t rt64_dmem[0x1000]{};
+alignas(16) uint8_t rt64_imem[0x1000]{};
+uint32_t mi_intr_reg = 0;
+uint32_t dpc_start_reg = 0;
+uint32_t dpc_end_reg = 0;
+uint32_t dpc_current_reg = 0;
+uint32_t dpc_status_reg = 0;
+uint32_t dpc_clock_reg = 0;
+uint32_t dpc_bufbusy_reg = 0;
+uint32_t dpc_pipebusy_reg = 0;
+uint32_t dpc_tmem_reg = 0;
+
+void rt64_check_interrupts() {}
+
+ultramodern::renderer::SetupResult map_rt64_setup_result(RT64::Application::SetupResult result) {
+    switch (result) {
+        case RT64::Application::SetupResult::Success: return ultramodern::renderer::SetupResult::Success;
+        case RT64::Application::SetupResult::DynamicLibrariesNotFound: return ultramodern::renderer::SetupResult::DynamicLibrariesNotFound;
+        case RT64::Application::SetupResult::InvalidGraphicsAPI: return ultramodern::renderer::SetupResult::InvalidGraphicsAPI;
+        case RT64::Application::SetupResult::GraphicsAPINotFound: return ultramodern::renderer::SetupResult::GraphicsAPINotFound;
+        case RT64::Application::SetupResult::GraphicsDeviceNotFound: return ultramodern::renderer::SetupResult::GraphicsDeviceNotFound;
+    }
+    return ultramodern::renderer::SetupResult::GraphicsDeviceNotFound;
+}
+
+ultramodern::renderer::GraphicsApi map_rt64_graphics_api(RT64::UserConfiguration::GraphicsAPI api) {
+    switch (api) {
+        case RT64::UserConfiguration::GraphicsAPI::D3D12: return ultramodern::renderer::GraphicsApi::D3D12;
+        case RT64::UserConfiguration::GraphicsAPI::Vulkan: return ultramodern::renderer::GraphicsApi::Vulkan;
+        case RT64::UserConfiguration::GraphicsAPI::Metal: return ultramodern::renderer::GraphicsApi::Metal;
+        case RT64::UserConfiguration::GraphicsAPI::Automatic: return ultramodern::renderer::GraphicsApi::Auto;
+    }
+    return ultramodern::renderer::GraphicsApi::Auto;
+}
+}
 
 static void SaveFramebufferBMP(const char* filename, const uint32_t* pixels, int width, int height) {
     if (!pixels || width <= 0 || height <= 0) return;
@@ -73,18 +113,33 @@ private:
     uint8_t* m_rdram;
     std::unique_ptr<RT64::Application> m_app;
     std::vector<uint32_t> m_pixel_buffer;
+    bool m_has_rendered_workload = false;
 
 public:
-    ConkerRendererContext(uint8_t* rdram, HWND hwnd) : m_hwnd(hwnd), m_rdram(rdram) {
-        setup_result = ultramodern::renderer::SetupResult::Success;
-        chosen_api = ultramodern::renderer::GraphicsApi::Vulkan;
+    ConkerRendererContext(uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle)
+        : m_hwnd(window_handle.window), m_rdram(rdram) {
+        setup_result = ultramodern::renderer::SetupResult::GraphicsDeviceNotFound;
+        chosen_api = ultramodern::renderer::GraphicsApi::Auto;
         m_pixel_buffer.resize(640 * 480, 0xFF000000);
 
         try {
             RT64::Application::Core core = {};
-            core.window = plume::RenderWindow(hwnd);
+            static unsigned char dummy_rom_header[0x40]{};
+            core.window = plume::RenderWindow(window_handle.window);
             core.RDRAM = rdram;
-            core.HEADER = rdram;
+            core.HEADER = dummy_rom_header;
+            core.DMEM = rt64_dmem;
+            core.IMEM = rt64_imem;
+            core.MI_INTR_REG = &mi_intr_reg;
+            core.DPC_START_REG = &dpc_start_reg;
+            core.DPC_END_REG = &dpc_end_reg;
+            core.DPC_CURRENT_REG = &dpc_current_reg;
+            core.DPC_STATUS_REG = &dpc_status_reg;
+            core.DPC_CLOCK_REG = &dpc_clock_reg;
+            core.DPC_BUFBUSY_REG = &dpc_bufbusy_reg;
+            core.DPC_PIPEBUSY_REG = &dpc_pipebusy_reg;
+            core.DPC_TMEM_REG = &dpc_tmem_reg;
+            core.checkInterrupts = rt64_check_interrupts;
 
             auto* vi = ultramodern::renderer::get_vi_regs();
             if (vi) {
@@ -109,10 +164,15 @@ public:
             appConfig.useConfigurationFile = false;
 
             m_app = std::make_unique<RT64::Application>(core, appConfig);
-            m_app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Vulkan;
-            auto res = m_app->setup(0);
+            // Try the platform-preferred backend and let RT64 fall back when
+            // that backend is unavailable in the cross-compiled binary.
+            m_app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Automatic;
+            auto res = m_app->setup(window_handle.thread_id);
+            setup_result = map_rt64_setup_result(res);
+            chosen_api = map_rt64_graphics_api(m_app->chosenGraphicsAPI);
             if (res == RT64::Application::SetupResult::Success) {
-                std::cout << "[Conker RT64] Vulkan 3D Graphics Engine initialized successfully!\n" << std::flush;
+                std::cout << "[Conker RT64] Graphics engine initialized successfully (API "
+                          << static_cast<int>(m_app->chosenGraphicsAPI) << ").\n" << std::flush;
             } else {
                 std::cout << "[Conker RT64] RT64 setup status: " << (int)res << " (using software fallback)\n" << std::flush;
                 m_app.reset();
@@ -126,24 +186,73 @@ public:
         }
     }
 
-    bool valid() override { return true; }
-    bool update_config(const ultramodern::renderer::GraphicsConfig&, const ultramodern::renderer::GraphicsConfig&) override { return true; }
+    bool valid() override { return m_app != nullptr; }
+    bool update_config(const ultramodern::renderer::GraphicsConfig&, const ultramodern::renderer::GraphicsConfig&) override { return false; }
     void enable_instant_present() override {}
 
     void send_dl(const OSTask* task) override {
         if (!task) return;
         static int dl_count = 0;
         dl_count++;
-        if (dl_count == 1 || dl_count % 60 == 0) {
+        if (dl_count <= 10 || dl_count % 60 == 0) {
             std::cout << "[Conker GFX] Processing DisplayList #" << dl_count << " (type: " << task->t.type 
                       << ", data: 0x" << std::hex << (uint32_t)(uintptr_t)task->t.data_ptr 
                       << ", size: 0x" << task->t.data_size << std::dec << ")\n" << std::flush;
         }
 
         if (m_app) {
+            m_app->state->rsp->reset();
+            m_app->interpreter->loadUCodeGBI(
+                static_cast<uint32_t>(task->t.ucode) & 0x03FFFFFF,
+                static_cast<uint32_t>(task->t.ucode_data) & 0x03FFFFFF,
+                true
+            );
+
+            // Conker uses Rare's custom F3DEXBG microcode, which is not yet part of
+            // RT64's stock GBI database. Its command layout is based on F3DEX2,
+            // so use that parser as a safe baseline instead of dereferencing a
+            // null GBI and crashing on the first display list.
+            if (m_app->interpreter->hleGBI == nullptr) {
+                const char* experimentalFallback = std::getenv("CONKER_EXPERIMENTAL_F3DEX2");
+                if ((experimentalFallback == nullptr) || (std::strcmp(experimentalFallback, "1") != 0)) {
+                    static bool warnedAboutSkippedF3DEXBG = false;
+                    if (!warnedAboutSkippedF3DEXBG) {
+                        std::cerr << "[Conker RT64] F3DEXBG is not implemented yet; skipping unknown "
+                                     "display lists to keep the runtime stable. Set "
+                                     "CONKER_EXPERIMENTAL_F3DEX2=1 to test the incomplete fallback.\n"
+                                  << std::flush;
+                        warnedAboutSkippedF3DEXBG = true;
+                    }
+                    return;
+                }
+
+                auto& fallbackGBI = m_app->interpreter->gbiManager.gbiCache[
+                    static_cast<uint32_t>(RT64::GBIUCode::F3DEX2)
+                ];
+                if (fallbackGBI.ucode == RT64::GBIUCode::Unknown) {
+                    fallbackGBI.ucode = RT64::GBIUCode::F3DEX2;
+                    RT64::GBI_RDP::setup(&fallbackGBI, true);
+                    RT64::GBI_F3DEX2::setup(&fallbackGBI);
+                    fallbackGBI.flags.NoN = true;
+                }
+
+                static bool warnedAboutF3DEXBG = false;
+                if (!warnedAboutF3DEXBG) {
+                    std::cerr << "[Conker RT64] F3DEXBG is not in RT64's GBI database; "
+                                 "using the compatible F3DEX2 command parser.\n" << std::flush;
+                    warnedAboutF3DEXBG = true;
+                }
+
+                m_app->interpreter->hleGBI = &fallbackGBI;
+                m_app->state->rsp->setGBI(&fallbackGBI);
+                if (fallbackGBI.resetFromTask != nullptr) {
+                    fallbackGBI.resetFromTask(m_app->state.get());
+                }
+            }
+
             uint32_t dl_start = ((uint32_t)(uintptr_t)task->t.data_ptr) & 0x00FFFFFF;
-            uint32_t dl_end = (dl_start + task->t.data_size) & 0x00FFFFFF;
-            m_app->processDisplayLists(m_rdram, dl_start, dl_end, true);
+            m_app->processDisplayLists(m_rdram, dl_start, dl_start + task->t.data_size, true);
+            m_has_rendered_workload = true;
         }
     }
 
@@ -151,7 +260,12 @@ public:
 
     void update_screen() override {
         if (m_app) {
-            m_app->updateScreen();
+            // RT64 cannot safely present the VI framebuffer before at least
+            // one supported display list has produced a valid workload.
+            if (m_has_rendered_workload) {
+                m_app->updateScreen();
+            }
+            return;
         }
 
         if (!m_hwnd) return;
@@ -434,7 +548,7 @@ int main(int argc, char* argv[]) {
         .create_render_context = [](uint8_t* rdram_ptr, ultramodern::renderer::WindowHandle wh, bool) -> std::unique_ptr<ultramodern::renderer::RendererContext> {
 #ifdef _WIN32
             std::cout << "[Conker] create_render_context callback invoked!\n" << std::flush;
-            return std::make_unique<ConkerRendererContext>(rdram_ptr, wh.window);
+            return std::make_unique<ConkerRendererContext>(rdram_ptr, wh);
 #else
             return nullptr;
 #endif

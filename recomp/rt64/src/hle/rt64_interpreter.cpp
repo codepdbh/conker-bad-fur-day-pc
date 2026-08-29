@@ -153,7 +153,7 @@ namespace RT64 {
         state->dlCpuProfiler.end();
     }
 
-    void Interpreter::processDisplayLists(uint32_t dlStartAdddress, DisplayList *dlStart) {
+    void Interpreter::processDisplayLists(uint32_t dlStartAdddress, DisplayList *dlStart, DisplayList *dlEnd) {
         assert(hleGBI != nullptr);
 
         state->dlCpuProfiler.start();
@@ -169,8 +169,15 @@ namespace RT64 {
         DisplayList *dl = dlStart;
         uint8_t opCode;
         GBIFunction func;
-        while (dl != nullptr) {
+        uint32_t commandCount = 0;
+        while ((dl != nullptr) && (dl != dlEnd)) {
             opCode = (dl->w0 >> 24);
+
+            if (++commandCount > 1000000) {
+                fprintf(stderr, "[RT64] Aborting malformed display list after %u commands.\n", commandCount);
+                dl = nullptr;
+                break;
+            }
 
             if ((extendedOpCode != 0) && (opCode == extendedOpCode)) {
                 extendedFunction(state, &dl);

@@ -26,6 +26,6 @@ namespace RT64 {
         void setup(State *state);
         void loadUCodeGBI(uint32_t textAddress, uint32_t dataAddress, bool resetFromTask);
         void processRDPLists(uint32_t dlStartAdddress, DisplayList* dlStart, DisplayList* dlEnd);
-        void processDisplayLists(uint32_t dlStartAdddress, DisplayList *dlStart);
+        void processDisplayLists(uint32_t dlStartAdddress, DisplayList *dlStart, DisplayList *dlEnd = nullptr);
     };
 };

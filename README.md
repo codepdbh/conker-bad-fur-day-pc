@@ -1,179 +1,188 @@
-# 🐿️ Conker's Bad Fur Day — Native PC Port & Decompilation
+# Conker's Bad Fur Day — experimental native PC port
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge&logo=windows)
-![Graphics](https://img.shields.io/badge/Graphics-RT64%20Vulkan%20%2F%20D3D12-orange?style=for-the-badge&logo=vulkan)
-![Language](https://img.shields.io/badge/Language-C%20%2F%20C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B)
-![Engine](https://img.shields.io/badge/Architecture-N64Recomp%20%2B%20Ultramodern-success?style=for-the-badge)
-![Status](https://img.shields.io/badge/Overall%20Progress-88%25-brightgreen?style=for-the-badge)
+![Platform](https://img.shields.io/badge/tested-Windows%20x64-0078D4?style=for-the-badge&logo=windows)
+![Renderer](https://img.shields.io/badge/renderer-RT64-orange?style=for-the-badge)
+![Build](https://img.shields.io/badge/native%20build-passing-success?style=for-the-badge)
+![Progress](https://img.shields.io/badge/verified%20milestones-4%20of%2010-yellow?style=for-the-badge)
 
-**A native, hardware-accelerated 64-bit PC port and static recompiler project for *Conker's Bad Fur Day* (Nintendo 64).**
+**English** · [Español](#español)
 
-[Features](#-key-features) • [Port Progress](#-port-progress--subsystem-status) • [Architecture](#-architecture) • [Requirements](#-requirements) • [Building](#-building) • [Running](#-running-the-game) • [Credits](#-credits--acknowledgments)
+An experimental static-recompilation port of *Conker's Bad Fur Day* for modern PCs.
+
+> This is a development build. It is not yet playable and does not currently reach the menus or gameplay.
 
 </div>
 
----
+## English
 
-## 📊 Port Progress & Subsystem Status
+### Current progress
 
-### 🎯 Overall Completion: `88%`
+Progress is tracked with reproducible milestones instead of a speculative overall percentage.
+
+```text
+Verified milestones: 4 / 10
+[####------] 4 verified · 1 partial · 5 pending
 ```
-[██████████████████████████████████████░░░░░] 88%
-```
 
-| Subsystem | Status | Progress | Notes |
-| :--- | :---: | :--- | :--- |
-| **Static Binary Recompiler (N64Recomp)** | ✅ Complete | `████████████████████` 100% | 100% of MIPS functions recompiled into C (`funcs_0`–`funcs_44`) |
-| **Physical RDRAM & MMIO Virtualization** | ✅ Complete | `████████████████████` 100% | Full 16MB RDRAM mapping, PI/SI/SP/AI/VI MMIO registers intercepted |
-| **Asset DMA & Rareware Decompression** | ✅ Complete | `████████████████████` 100% | 24,000+ assets (textures, models, audio tables) streaming seamlessly |
-| **Ultra64 OS Threading & Scheduler** | ✅ Stable | `███████████████████░` 95% | Multi-threaded preemption, thread queues, context switching (`osStopThread`) |
-| **RT64 Vulkan 3D Graphics Engine** | 🎮 Active | `██████████████████░░` 90% | Vulkan swapchain initialized, SPIR-V ubershaders & DisplayList pipeline |
-| **Video Interface (VI Presenter)** | 🎮 Active | `███████████████████░` 95% | Framebuffer flipping (`osViSwapBuffer`), 60 FPS vertical sync loop |
-| **Controller & Input Subsystem** | 🎮 Active | `██████████████████░░` 90% | Keyboard & XInput gamepad mapping with connected device emulation |
-| **Audio Synthesizer & AI DMA** | ⚙️ In Progress | `███████████████░░░░░` 75% | Audio message queues, sound bank streaming, AI DMA sync |
-| **Game Engine Boot & Main Loop** | 🚀 Running | `██████████████████░░` 90% | Main loop (`func_15007830`) active and running at stable 60 FPS |
-| **In-Game 3D Graphics & Menus** | ⚙️ In Progress | `███████████████░░░░░` 75% | Transitioning from engine init to Rare logo and 3D Main Menu |
+| # | Milestone | Status | What has actually been verified |
+|---:|---|:---:|---|
+| 1 | Generate the recompiled C sources | Verified | N64Recomp produces `funcs_0.c` through `funcs_57.c`. |
+| 2 | Build a native Windows executable | Verified | The Docker/MinGW build produces `Conker.exe`. |
+| 3 | Load and start the original ROM | Verified | The US ROM loads, is byte-swapped when required, and enters the runtime. |
+| 4 | Reach the first game frame | Verified | Threads, message queues and PI DMA advance far enough to submit the first graphics task. |
+| 5 | Process the first display list safely | Partial | The bounded task returns SP/DP completion, but Conker's custom graphics microcode is incomplete. |
+| 6 | Render stable consecutive frames | Pending | Continuous, correct presentation has not been demonstrated. |
+| 7 | Implement Conker's `F3DEXBG` microcode | Pending | Custom vertices, packed `Tri4`, lighting and related commands still need RT64 support. |
+| 8 | Validate controller input in-game | Pending | Host input has not been validated in a reachable game scene. |
+| 9 | Validate audio output in-game | Pending | Audio synthesis and AI DMA have not been validated end to end. |
+| 10 | Reach menus and playable gameplay | Pending | Neither menus nor gameplay are currently reachable. |
 
----
+The count is deliberately conservative: “partial” does not count as complete. Update it only after recording a repeatable test.
 
-## 🌟 Key Features
+### What works today
 
-- **⚡ Native x86_64 Machine Code Execution**: Statically recompiled from original MIPS III binaries using `N64Recomp`. Zero JIT compilation overhead, blazing fast native execution.
-- **🎮 Modern Graphics Pipeline (RT64)**: Hardware-accelerated 3D rendering powered by **Vulkan** and **Direct3D 12**, supporting high refresh rates, ultra-widescreen resolutions, and true PC graphical enhancements.
-- **🧵 High-Level OS Emulation (Ultramodern)**: Complete re-implementation of the Ultra64 OS threading, scheduling, message queues, and event system running across native host CPU threads with thread isolation.
-- **💾 Modern Memory & Hardware Virtualization**:
-  - Transparent physical RDRAM memory mapping with MMIO hardware register redirection (`0x04000000`–`0x048FFFFF`).
-  - Direct Cartridge ROM DMA streaming and Rareware custom decompression subsystem.
-  - Native N64 Boot ROM & CIC-6105 security key emulation.
-- **🎯 Full Input & Audio Virtualization**: Native controller support via modern game input APIs and low-latency audio rendering.
+- Native x86-64 Windows cross-compilation.
+- ROM loading and initial RDRAM/runtime setup.
+- Enough Ultra64 threading, message-queue and PI DMA behavior to enter the main loop and construct the first frame.
+- RT64 initialization and bounded display-list submission.
 
----
+### Main blockers
 
-## 🏗️ Architecture
+- Correct RT64 support for Rare's custom `F3DEXBG.NoN` graphics microcode.
+- Stable GPU resource creation and consecutive-frame presentation.
+- Removal of remaining generated-code compatibility workarounds.
+- End-to-end validation of video, input, audio, menus and gameplay.
+
+### Architecture
 
 ```mermaid
-graph TD
-    A[Original Conker N64 ROM baserom.us.z64] -->|Static Binary Recompilation| B[recomp/src/recompiled/*.c]
-    B -->|C++ Compiler GCC/Clang/MSVC| C[Conker.exe Native Binary]
-    D[RT64 Rendering Backend] -->|Vulkan / D3D12| C
-    E[Ultramodern Ultra64 Runtime] -->|Threads / Semaphores / Queues| C
-    F[Librecomp Hardware Abstraction] -->|PI DMA / MMIO / Audio / Input| C
-    C --> G[Native PC Window with Hardware 3D Graphics]
+flowchart LR
+    ROM[Legally owned US N64 ROM] --> RECOMP[N64Recomp]
+    RECOMP --> C[Generated C sources]
+    C --> EXE[Native Conker.exe]
+    U[Ultramodern runtime] --> EXE
+    R[RT64 renderer] --> EXE
+    EXE --> W[Windows x64]
 ```
 
-The port combines three foundational modern technologies:
-1. **N64Recomp Core**: Converts original MIPS assembly instructions into native C representations (`funcs_0.c` through `funcs_44.c`), preserving original logic and timing accuracy.
-2. **Ultramodern**: Provides a modern, thread-safe, high-level emulation layer for Ultra64 operating system primitives (OS threads, priority queues, interrupts, message passing).
-3. **RT64**: A state-of-the-art N64 graphics backend enabling ray tracing, modern post-processing, and native GPU rendering without legacy plugin limitations.
+The project combines N64Recomp for static MIPS-to-C translation, Ultramodern/librecomp for Ultra64 services, and RT64 for modern graphics processing.
 
----
+### Requirements
 
-## 📋 Requirements
+- Windows 10 or 11, 64-bit. Other platforms are not currently verified.
+- Docker Desktop for the reproducible cross-build.
+- A Direct3D 12 or Vulkan-capable GPU.
+- A legally obtained US/NTSC ROM named `baserom.us.z64`. The ROM is not included.
 
-### For Running
-- **Operating System**: Windows 10/11 (64-bit) or Linux (x86_64)
-- **GPU**: Vulkan 1.2+ or DirectX 12 compatible graphics card (NVIDIA GeForce, AMD Radeon, or Intel Arc)
-- **ROM**: Legal copy of *Conker's Bad Fur Day* (US / NTSC version) named `baserom.us.z64`
+### Build and run
 
-### For Building
-- **Docker Desktop** (recommended for automated cross-compilation) OR
-- **Native Toolchain**:
-  - CMake 3.22+
-  - Ninja build system
-  - MinGW-w64 (GCC 12+) or Clang / MSVC
-  - Vulkan SDK
-
----
-
-## 🔨 Building
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/codepdbh/conker-pc-port.git
-cd conker-pc-port
-```
-
-### 2. Provide the Base ROM
-
-Place your legally obtained US ROM in the root directory:
-```bash
-cp /path/to/conker.z64 ./baserom.us.z64
-```
-
-### 3. Build via Docker (Recommended)
-
-Build the Docker container environment:
-```bash
-docker build . -t conker
-```
-
-Compile the native executable using Ninja:
-```bash
-docker run --rm -v "${PWD}:/conker" -w /conker/recomp/build_win conker ninja Conker
-```
-
-The compiled binary `Conker.exe` will be generated in `recomp/build_win/Conker.exe`.
-
----
-
-## 🕹️ Running the Game
-
-Copy the compiled executable to the project root:
+From PowerShell in the repository root:
 
 ```powershell
-cp recomp\build_win\Conker.exe .\Conker.exe
-.\Conker.exe baserom.us.z64
+.\build_native.bat
+.\Conker.exe .\baserom.us.z64
 ```
 
-### Controls (Default Keyboard Mapping)
+The script performs a clean Docker build and places `Conker.exe` in the repository root. Expect an experimental bring-up build, not a playable port.
 
-| N64 Button | PC Keyboard Key | Controller (XInput) |
-|---|---|---|
-| **Analog Stick** | `W` `A` `S` `D` / Arrow Keys | Left Analog Stick |
-| **A Button** (Jump) | `Space` / `K` | `A` (Cross) |
-| **B Button** (Attack / Context Action) | `J` / `X` | `X` (Square) |
-| **Z Trigger** (Crouch / High Jump) | `Left Shift` / `Z` | `LT` / `L2` |
-| **L Trigger** | `Q` | `LB` / `L1` |
-| **R Trigger** (First Person / Center Cam) | `E` | `RB` / `R1` |
-| **C-Buttons** (Camera Control) | `I` `J` `K` `L` / Right Stick | Right Stick |
-| **Start** (Pause Menu) | `Enter` / `Escape` | `Start` / `Options` |
+Developers can set `CONKER_EXPERIMENTAL_F3DEX2=1` before launching to exercise the incomplete F3DEX2-compatible graphics path. It is disabled by default because Conker's custom microcode can currently produce invalid GPU workloads.
+
+### Reporting progress
+
+For each completed milestone, record the exact commit, build result, GPU and graphics API, last runtime stage, and a reproducible log or capture.
 
 ---
 
-## 📂 Project Structure
+## Español
 
+### Progreso actual
+
+El progreso se mide mediante hitos reproducibles, no con un porcentaje general especulativo.
+
+```text
+Hitos verificados: 4 / 10
+[####------] 4 verificados · 1 parcial · 5 pendientes
 ```
-conker-pc-port/
-├── recomp/                         # Native PC port source and build systems
-│   ├── CMakeLists.txt              # Top-level modern CMake project
-│   ├── N64ModernRuntime/           # High-Level Ultra64 OS & Hardware Emulation
-│   │   ├── ultramodern/            # Multi-threaded OS, scheduling, message queues
-│   │   └── librecomp/              # Hardware abstraction (PI DMA, MMIO, VI, Audio)
-│   ├── rt64/                       # RT64 Vulkan / Direct3D 12 rendering engine
-│   └── src/
-│       ├── main.cpp                # Native application entry point & initialization
-│       └── recompiled/             # Statically recompiled C code (funcs_0.c - funcs_44.c)
-├── tools/                          # Splat, MIPS to C, disassembly & asset tools
-├── src/                            # Decompiled C source code modules
-├── include/                        # Ultra64 and Conker engine headers
-├── Dockerfile                      # Hermetic build environment definition
-└── README.md                       # Documentation
+
+| # | Hito | Estado | Qué se ha comprobado realmente |
+|---:|---|:---:|---|
+| 1 | Generar el código C recompilado | Verificado | N64Recomp genera `funcs_0.c` a `funcs_57.c`. |
+| 2 | Compilar un ejecutable nativo de Windows | Verificado | La compilación con Docker/MinGW produce `Conker.exe`. |
+| 3 | Cargar e iniciar la ROM original | Verificado | La ROM estadounidense se carga, corrige su orden de bytes si hace falta y entra al runtime. |
+| 4 | Alcanzar el primer fotograma del juego | Verificado | Los hilos, colas de mensajes y DMA de PI avanzan hasta enviar la primera tarea gráfica. |
+| 5 | Procesar con seguridad la primera display list | Parcial | La tarea acotada devuelve SP/DP, pero el microcódigo gráfico de Conker está incompleto. |
+| 6 | Renderizar fotogramas consecutivos estables | Pendiente | Aún no se ha demostrado una presentación continua y correcta. |
+| 7 | Implementar el microcódigo `F3DEXBG` de Conker | Pendiente | Faltan vértices personalizados, `Tri4` empaquetado, iluminación y órdenes relacionadas en RT64. |
+| 8 | Validar el mando dentro del juego | Pendiente | La entrada del host no se ha validado en una escena alcanzable. |
+| 9 | Validar el audio dentro del juego | Pendiente | La síntesis y el DMA de AI no se han validado de extremo a extremo. |
+| 10 | Alcanzar menús y una partida jugable | Pendiente | Actualmente no se llega a los menús ni al gameplay. |
+
+El conteo es deliberadamente conservador: un hito “parcial” no cuenta como terminado. Solo debe actualizarse después de registrar una prueba repetible.
+
+### Qué funciona hoy
+
+- Compilación cruzada nativa para Windows x86-64.
+- Carga de ROM y configuración inicial de RDRAM/runtime.
+- Suficiente funcionamiento de hilos Ultra64, colas de mensajes y DMA de PI para entrar al bucle principal y construir el primer fotograma.
+- Inicialización de RT64 y envío acotado de la primera display list.
+
+### Bloqueos principales
+
+- Soporte correcto en RT64 para el microcódigo personalizado `F3DEXBG.NoN` de Rare.
+- Creación estable de recursos GPU y presentación de fotogramas consecutivos.
+- Eliminar las soluciones temporales de compatibilidad del código generado.
+- Validar de extremo a extremo vídeo, entrada, audio, menús y gameplay.
+
+### Requisitos
+
+- Windows 10 u 11 de 64 bits. Las demás plataformas aún no están verificadas.
+- Docker Desktop para la compilación reproducible.
+- GPU compatible con Direct3D 12 o Vulkan.
+- Una ROM legal US/NTSC llamada `baserom.us.z64`. La ROM no está incluida.
+
+### Compilar y ejecutar
+
+Desde PowerShell, en la raíz del repositorio:
+
+```powershell
+.\build_native.bat
+.\Conker.exe .\baserom.us.z64
 ```
+
+El script realiza una compilación limpia dentro de Docker y coloca `Conker.exe` en la raíz. Es una versión experimental, no un port jugable.
+
+Los desarrolladores pueden definir `CONKER_EXPERIMENTAL_F3DEX2=1` antes de ejecutar para probar la ruta gráfica incompleta compatible con F3DEX2. Está desactivada por defecto porque el microcódigo personalizado de Conker todavía puede producir cargas GPU no válidas.
+
+### Cómo informar un avance
+
+Para cada hito terminado, registra el commit exacto, resultado de compilación, GPU y API gráfica, última etapa alcanzada y un log o captura reproducible.
 
 ---
 
-## 🤝 Credits & Acknowledgments
+## Project layout / Estructura del proyecto
 
-- **Rareware (1997-2001)**: The legendary creators and developers of *Conker's Bad Fur Day*.
-- **[N64Recomp / Zelda64Recomp](https://github.com/Mr-Wiseguy/N64Recomp)**: Revolutionary static recompilation tooling and runtime created by Mr-Wiseguy.
-- **[RT64](https://github.com/rt64/rt64)**: Next-generation Vulkan/D3D12 hardware rendering backend by Darly.
-- **[Conker Decompilation Team](https://github.com/mkst/conker)**: Splat tools, disassembly definitions, and ongoing symbol documentation.
+```text
+conker-master/
+├── recomp/                  Native port and runtime / Port y runtime nativos
+│   ├── N64ModernRuntime/    Ultramodern and librecomp
+│   ├── rt64/                Graphics backend / Backend gráfico
+│   └── src/recompiled/      Generated C sources / Código C generado
+├── tools/                   Recompilation tools / Herramientas
+├── build_native.bat         Reproducible build / Compilación reproducible
+└── README.md
+```
 
----
+## Credits / Créditos
 
-<div align="center">
-<i>Disclaimer: This project does not contain any copyrighted ROM assets, game media, or proprietary binaries. A legally acquired copy of the original game is required to build and run the project.</i>
-</div>
+- Rare — original game and technology / juego y tecnología originales.
+- [N64Recomp](https://github.com/Mr-Wiseguy/N64Recomp) — static recompilation / recompilación estática.
+- [RT64](https://github.com/rt64/rt64) — modern N64 renderer / renderizador moderno para N64.
+- [Conker decompilation project](https://github.com/mkst/conker) — analysis and tooling / análisis y herramientas.
+
+## Legal notice / Aviso legal
+
+This repository must not contain the game ROM or copyrighted game assets. You must provide your own legally obtained copy.
+
+Este repositorio no debe contener la ROM ni recursos con copyright del juego. Debes proporcionar tu propia copia obtenida legalmente.
