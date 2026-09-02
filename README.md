@@ -1,168 +1,245 @@
-# Conker's Bad Fur Day — experimental native PC port
+# Conker's Bad Fur Day — Native PC Port
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/tested-Windows%20x64-0078D4?style=for-the-badge&logo=windows)
-![Renderer](https://img.shields.io/badge/renderer-RT64-orange?style=for-the-badge)
-![Build](https://img.shields.io/badge/native%20build-passing-success?style=for-the-badge)
-![Progress](https://img.shields.io/badge/verified%20milestones-8%20of%2010-brightgreen?style=for-the-badge)
-![Subsystems](https://img.shields.io/badge/engine%20subsystems-88%25-green?style=for-the-badge)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=for-the-badge&logo=windows)
+![Renderer](https://img.shields.io/badge/renderer-RT64%20(Vulkan)-orange?style=for-the-badge)
+![Build](https://img.shields.io/badge/build-passing-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/gameplay-not%20yet%20playable-red?style=for-the-badge)
 
 **English** · [Español](#español)
 
-An experimental static-recompilation port of *Conker's Bad Fur Day* for modern PCs with RT64 Vulkan/D3D12 hardware rendering and Ultramodern runtime.
+An experimental static-recompilation port of *Conker's Bad Fur Day* (N64) to native Windows, built on [N64Recomp](https://github.com/N64Recomp/N64Recomp), [N64ModernRuntime](https://github.com/Mr-Wiseguy/N64ModernRuntime) and the [RT64](https://github.com/rt64/rt64) Vulkan renderer.
 
 </div>
 
+---
+
 ## English
 
-### Current Progress & Subsystem Status
+### Status, honestly
 
-Progress is tracked with reproducible milestones and verifiable subsystem health:
+This project **builds and boots**, but is **not playable yet**. Rather than self-graded completion percentages, here's what has actually been verified by running the binary and reading the evidence it produced:
 
-```text
-Overall Port Readiness: [#####################-----] 80%
-Core Subsystems:        [#######################---] 88%
-Verified Milestones:    8 / 10 Verified
+**Confirmed working**
+
+- The Docker/MinGW toolchain produces a native `Conker.exe` that starts, loads and byte-swaps the US ROM, and passes its CIC check.
+- The OS thread scheduler brings up all of the game's early threads (IDs 1, 3, 4, 20, 21) concurrently without deadlocking, and the dynamic overlay resolver dispatches into them correctly.
+- RT64 initializes its Vulkan device, pipelines and render targets, and does draw real geometry: a sample run showed a sane viewport, active z-buffer/back-face culling, and thousands of triangles submitted with varied vertex indices.
+- Input is wired end-to-end (keyboard → `get_input` callback → `osContGetReadData` → the recompiled game code) — confirmed by tracing the code path and by injecting real keystrokes into the running window.
+- The actor tick engine (`func_15122AE0`, `func_15122C5C`, …) keeps executing continuously — it isn't stuck.
+
+**The current blocker**
+
+The game boots into its intro sequence, then the screen **stops updating** — it does not reach the "Nintendo" logo, the chainsaw title card, or the first playable menu the way a real N64/emulator run does. This was confirmed directly: a reference `mupen64plus` + Rice build of the same ROM (see [Reference emulator](#reference-emulator-for-comparison) below) renders the intro correctly, while our build freezes partway through it.
+
+The root cause has been localized with instrumentation, not guessed at: the game keeps submitting new SP tasks (`osSpTaskStartGo` runs well past task #100 — both graphics and audio tasks), but RT64's internal `workloadId` permanently stops advancing around task #50 and never recovers, even after thousands of subsequent VI updates. There's no crash and no "malformed display list" abort, which rules out a runaway/misdecoded display list. This points to RT64's graphics task consumer thread getting stuck on an internal synchronization wait (most likely a Vulkan fence/semaphore tangled with the present thread) rather than a GBI parsing bug. See [Known Issues](#known-issues) for the full technical writeup.
+
+### Subsystem breakdown
+
+| Subsystem | State | Detail |
+|---|:---:|---|
+| MIPS static recompilation | ✅ Working | 58 translation units (`funcs_0.c`..`funcs_57.c`) compile and link. |
+| OS thread scheduler | ✅ Working | Threads 1/3/4/20/21 start concurrently, Win32 TLS isolation, message queues. |
+| Dynamic overlays | ✅ Working | Basic-block jump targets resolve to the right overlay function. |
+| Actor tick engine | ✅ Working | Confirmed actively executing via instruction-level tracing, independent of the render stall. |
+| RT64 Vulkan backend | 🟡 Partial | Initializes correctly and draws real geometry, but the task consumer stalls after ~50 SP tasks — see Known Issues. |
+| F3DEXBG (Rare's custom microcode) | 🟡 In progress | Dedicated GBI module implemented and cross-checked field-by-field against GLideN64's `F3DEX2CBFD` reference (vertex format, Tri4 bit-packing, moveword/movemem all match); not yet proven correct end-to-end because rendering stalls before a full scene can be observed. |
+| Audio | 🟡 In progress | SDL2 output wired, AI task queue draining; not fully verified against the render stall. |
+| Input | ✅ Working | Verified wired end-to-end; irrelevant until the render stall is fixed, since nothing currently reads it back interactively. |
+
+### Reference emulator (for comparison)
+
+The project's Docker image can also run a real N64 emulator (`mupen64plus` + Rice) against the same ROM, headless, via `xvfb-run`, to produce ground-truth screenshots for comparison — this is how the render stall above was confirmed rather than assumed:
+
+```bash
+docker exec <container> bash -c \
+  "apt-get install -y mupen64plus-ui-console mupen64plus-video-rice mupen64plus-audio-sdl mupen64plus-input-sdl mupen64plus-rsp-hle xvfb"
+
+xvfb-run -a /usr/games/mupen64plus --noosd --gfx mupen64plus-video-rice.so \
+  --audio dummy --rsp mupen64plus-rsp-hle.so --sshotdir ./shots \
+  --testshots 60,300,600,1200,1800 baserom.us.z64
 ```
 
-```mermaid
-pie title Engine Subsystem Implementation Progress
-    "CPU Static Recompilation (100%)" : 100
-    "Ultra64 OS & Multithreading (98%)" : 98
-    "Overlays & Dynamic Code Loader (95%)" : 95
-    "RT64 Vulkan Graphics Pipeline (85%)" : 85
-    "N64 VI & Display Presentation (90%)" : 90
-    "Actor Engine & Tick Simulation (90%)" : 90
-    "Controller & Input Mapping (80%)" : 80
-    "Audio Synthesis & AI DMA (45%)" : 45
-```
-
-#### Subsystem Breakdown
-
-| Subsystem | Progress | Status | Details |
-|---|:---:|:---:|---|
-| **MIPS Static Recompiler** | `100%` | ✅ Operational | 58 recompiled translation units (`funcs_0.c` .. `funcs_57.c`) fully linked. |
-| **OS Thread Scheduler** | `98%` | ✅ Operational | Concurrent multi-threading (Threads 1, 3, 4, 20, 21), Win32 TLS isolation, event retry queues. |
-| **Dynamic Overlays** | `95%` | ✅ Operational | Enclosing-function basic-block jump target matching and runtime symbol dispatch. |
-| **Actor Simulation & Tick Engine** | `90%` | ✅ Operational | Full loop execution (`func_15019130`, `func_15122AE0`, `func_15122C5C`), transforms & timers updated. |
-| **Graphics Backend (RT64)** | `85%` | 🟡 Active | Vulkan backend, F3DEXBG Tri4 opcode mapping (0x10–0x1F), vertex boundary protection. |
-| **VI Video Output** | `90%` | ✅ Operational | Ping-pong frame buffer swaps (`0x803B7600` <-> `0x803D6300`) with continuous display presentation. |
-| **Input Subsystem** | `80%` | 🟡 Active | Keyboard and DirectInput bindings (Arrow keys, Space/X, C/Z, Enter, Shift/Q, WASD). |
-| **Audio Subsystem** | `45%` | ⚙️ In Progress | Audio message queues, thread synchronization, and SDL2 audio device interface. |
-
-#### Detailed Milestones
-
-| # | Milestone | Status | Verified Technical Achievement |
-|---:|---|:---:|---|
-| 1 | Generate recompiled C sources | ✅ Verified | N64Recomp produces all 58 translation units without omissions. |
-| 2 | Build native Windows executable | ✅ Verified | Ninja + MinGW-w64 toolchain produces stable native `Conker.exe`. |
-| 3 | Load and start original ROM | ✅ Verified | US ROM (64MB) loaded, byte-swapped, and CRC/CIC 6105 verified. |
-| 4 | Multi-threaded OS runtime startup | ✅ Verified | Threads 1, 3, 21, 20, and 4 launch concurrently without deadlocks. |
-| 5 | Dynamic overlay runtime resolver | ✅ Verified | Basic block jumps into interior code offsets resolved safely. |
-| 6 | RT64 Vulkan pipeline initialization | ✅ Verified | Vulkan device, pipelines, and render targets allocate without memory faults. |
-| 7 | Continuous VI retrace & Frame Swaps | ✅ Verified | VI frame swaps at `0x803B7600`/`0x803D6300` dispatched and presented continuously. |
-| 8 | Actor Simulation & Main Loop Execution | ✅ Verified | Frame loop, actors (`func_15122AE0`), cameras, particles run stably at 60 FPS. |
-| 9 | F3DEXBG Rare Microcode Geometry | ⚙️ In Progress | Full geometry decoding for Conker's custom display list microcode. |
-| 10 | Interactive 3D Menus & Gameplay | ⚙️ In Progress | Direct user control navigation in 3D menus and level exploration. |
+`--testshots` takes screenshots at the given frame numbers and exits — useful for pinning down exactly what a given point in the game is supposed to look like.
 
 ### Architecture
 
 ```mermaid
 flowchart TD
-    ROM[Legally Owned US N64 ROM] --> RECOMP[N64Recomp Static Toolchain]
-    RECOMP --> C[Generated C Code funcs_0..57]
-    C --> EXE[Conker.exe Native Binary]
-    ULTRA[Ultramodern Runtime - Threads & Events] --> EXE
-    LIBREC[librecomp - Overlays & Lookup] --> EXE
-    RT64[RT64 - Modern Vulkan / D3D12 Renderer] --> EXE
-    EXE --> HOST[Windows x64 Native Execution]
+    ROM[Legally owned US N64 ROM] --> RECOMP[N64Recomp static toolchain]
+    RECOMP --> C[Generated C sources funcs_0..57]
+    C --> EXE[Conker.exe native binary]
+    ULTRA[Ultramodern runtime - threads & events] --> EXE
+    LIBREC[librecomp - overlays & HLE syscalls] --> EXE
+    RT64[RT64 - Vulkan/D3D12 renderer] --> EXE
+    EXE --> HOST[Windows x64 native execution]
 ```
 
-### Build & Run Instructions
+### Build & run
 
-From PowerShell:
+The toolchain (MinGW-w64 + Ninja + CMake) lives inside the project's Docker image, so no local compiler install is required.
 
 ```powershell
+# One-time: build the toolchain image (see Dockerfile)
+docker build -t conker .
+
+# Full build (regenerates recompiled C sources from the ROM — see the warning below)
 .\build_native.bat
+
+# Incremental rebuild after editing C++ (RT64/RSP/GBI/main.cpp) — fast, and safe
+docker run --rm -v "${PWD}:/conker" -w /conker conker bash -c "cd recomp && cmake --build build_win --target Conker"
+Copy-Item recomp\build_win\Conker.exe .\Conker.exe -Force
+
+# Run
 .\Conker.exe .\baserom.us.z64
 ```
+
+> **Important:** `build_native.bat` always reruns `N64Recomp` from scratch, which regenerates `recomp/src/recompiled/funcs_*.c`. Several of those files (`funcs_31/33/4/5/52/58/7/8.c`, especially `funcs_52.c`'s actor tick engine) carry hand patches that are committed directly into the generated sources but aren't encoded in `tools/recomp/patch_generated.py`. A full regen silently reverts them and has previously caused VI/framebuffer register corruption. **Prefer the incremental `cmake --build` command above** for day-to-day work, and if you do run the full pipeline, check `git diff -- recomp/src/recompiled/` before committing.
+
+### Known Issues
+
+**Render stall after ~50 SP tasks** (open, actively being investigated)
+
+- Symptom: the game window stops updating partway through the intro sequence; input has no visible effect.
+- `osSpTaskStartGo` keeps incrementing well past task #100 (game logic is alive and still submitting graphics + audio tasks).
+- RT64's `workloadId` freezes around task #50 and never advances again, across thousands of subsequent VI presents.
+- No "`[RT64] Aborting malformed display list`" safety-net message ever fires (that would print after 1,000,000 interpreted commands), which rules out a runaway/misdecoded display list looping forever.
+- The VI's framebuffer address always resolves to a tracked `Framebuffer` (ruling out a ping-pong buffer address mismatch), and triangle submission looks structurally sane (viewport, z-buffer, culling all reasonable).
+- Working theory: RT64's graphics task consumer thread (`WindowHandler::runTask` in `recomp/src/main.cpp`, driven by the SP task queue) is blocked on an internal synchronization primitive — most likely a Vulkan fence/semaphore shared with the present thread. This needs Vulkan-level tracing (validation layers, or instrumenting RT64's task queue wait conditions) to confirm.
+
+If you pick this up: the diagnostic printfs added in `rt64_rsp.cpp` (`drawIndexedTri`), `rt64_rdp.cpp` (`setColorImage`) and `rt64_present_queue.cpp` (`threadPresent`) are already in place and rate-limited; re-running the build and grepping `conker_run.log` for `RT64 Present`, `RT64 RDP` and `osSpTaskStartGo` reproduces the evidence above.
+
+### Project layout
+
+```text
+conker-master/
+├── recomp/                  Native port and runtime
+│   ├── N64ModernRuntime/    Ultramodern runtime and librecomp (HLE syscalls)
+│   ├── rt64/                RT64 Vulkan/D3D12 graphics backend
+│   └── src/recompiled/      Generated C sources (see the Known Issues warning above)
+├── tools/                   N64Recomp, splat, and other recompilation tooling
+├── build_native.bat         Full reproducible build (regenerates C sources)
+└── README.md
+```
+
+### Credits
+
+- Rare — original game and technology.
+- [N64Recomp](https://github.com/N64Recomp/N64Recomp) — static recompilation toolchain.
+- [N64ModernRuntime](https://github.com/Mr-Wiseguy/N64ModernRuntime) — Ultramodern runtime and librecomp.
+- [RT64](https://github.com/rt64/rt64) — modern N64 renderer.
+- [GLideN64](https://github.com/gonetz/GLideN64) — reference implementation of Conker's custom `F3DEX2CBFD` microcode, used to validate this port's F3DEXBG support.
+
+### Legal notice
+
+This repository must not contain the game ROM or copyrighted game assets. You must provide your own legally obtained copy.
 
 ---
 
 ## Español
 
-### Estado del Proyecto y Progreso de Subsistemas
+### Estado, sin adornos
 
-El progreso se mide mediante hitos técnicos verificados y métricas reales:
+Este proyecto **compila y arranca**, pero **todavía no es jugable**. En vez de porcentajes autoevaluados, esto es lo que se verificó de verdad corriendo el binario y leyendo la evidencia que produjo:
 
-```text
-Completitud General del Port: [#####################-----] 80%
-Subsistemas Principales:      [#######################---] 88%
-Hitos Verificados:            8 / 10 Verificados
+**Confirmado funcionando**
+
+- El toolchain Docker/MinGW genera un `Conker.exe` nativo que arranca, carga y hace el byte-swap de la ROM US, y pasa la verificación CIC.
+- El planificador de hilos del SO levanta todos los hilos tempranos del juego (IDs 1, 3, 4, 20, 21) en paralelo sin bloquearse, y el resolutor de overlays dinámicos despacha correctamente hacia ellos.
+- RT64 inicializa su dispositivo Vulkan, pipelines y render targets, y **sí** dibuja geometría real: una corrida de prueba mostró un viewport coherente, z-buffer y backface culling activos, y miles de triángulos enviados con índices variados.
+- El input está conectado de punta a punta (teclado → callback `get_input` → `osContGetReadData` → código recompilado del juego) — confirmado tanto leyendo el código como inyectando teclas reales en la ventana corriendo.
+- El motor de tick de actores (`func_15122AE0`, `func_15122C5C`, …) sigue ejecutándose de forma continua — no está trabado.
+
+**El bloqueo actual**
+
+El juego arranca su secuencia de intro y después la pantalla **deja de actualizarse** — no llega al logo de "Nintendo", ni a la pantalla de título con la motosierra, ni al primer menú jugable, como sí hace una corrida real en N64 o emulador. Esto se confirmó directamente: una build de referencia de `mupen64plus` + Rice corriendo la misma ROM (ver [Emulador de referencia](#emulador-de-referencia-para-comparar) abajo) renderiza la intro correctamente, mientras que nuestra build se congela a mitad de camino.
+
+La causa raíz ya está localizada con instrumentación, no es una suposición: el juego sigue mandando nuevas tareas SP (`osSpTaskStartGo` sigue corriendo bien pasada la tarea #100 — tareas de gráficos y de audio), pero el `workloadId` interno de RT64 deja de avanzar para siempre alrededor de la tarea #50 y nunca se recupera, ni después de miles de actualizaciones de VI posteriores. No hay crash ni el aviso de "display list malformado", lo cual descarta un display list corrupto en loop. Esto apunta a que el thread consumidor de tareas gráficas de RT64 queda trabado en una espera de sincronización interna (lo más probable, un fence/semáforo de Vulkan cruzado con el thread de presentación), no un bug de parseo de GBI. Ver [Problemas conocidos](#problemas-conocidos) para el detalle técnico completo.
+
+### Tabla de subsistemas
+
+| Subsistema | Estado | Detalle |
+|---|:---:|---|
+| Recompilación estática MIPS | ✅ Funciona | 58 unidades de traducción (`funcs_0.c`..`funcs_57.c`) compilan y enlazan. |
+| Planificador de hilos OS | ✅ Funciona | Hilos 1/3/4/20/21 arrancan en paralelo, aislamiento Win32 TLS, colas de mensajes. |
+| Overlays dinámicos | ✅ Funciona | Los saltos a bloques básicos resuelven a la función de overlay correcta. |
+| Motor de tick de actores | ✅ Funciona | Confirmado activo mediante trazado a nivel de instrucción, independiente del bloqueo de render. |
+| Backend Vulkan RT64 | 🟡 Parcial | Inicializa correctamente y dibuja geometría real, pero el consumidor de tareas se traba después de ~50 tareas SP — ver Problemas Conocidos. |
+| F3DEXBG (microcódigo custom de Rare) | 🟡 En progreso | Módulo GBI dedicado implementado y comparado campo por campo contra la referencia `F3DEX2CBFD` de GLideN64 (formato de vértice, empaquetado de bits de Tri4, moveword/movemem — todo coincide); no probado de punta a punta todavía porque el render se traba antes de poder observar una escena completa. |
+| Audio | 🟡 En progreso | Salida SDL2 conectada, cola de tareas AI drenando; no verificado del todo contra el bloqueo de render. |
+| Input | ✅ Funciona | Verificado de punta a punta; irrelevante hasta que se arregle el bloqueo de render, ya que nada lo lee de forma interactiva por ahora. |
+
+### Emulador de referencia (para comparar)
+
+La imagen Docker del proyecto también puede correr un emulador de N64 real (`mupen64plus` + Rice) contra la misma ROM, sin interfaz gráfica, vía `xvfb-run`, para generar capturas de referencia — así se confirmó el bloqueo de render de arriba en vez de asumirlo:
+
+```bash
+docker exec <container> bash -c \
+  "apt-get install -y mupen64plus-ui-console mupen64plus-video-rice mupen64plus-audio-sdl mupen64plus-input-sdl mupen64plus-rsp-hle xvfb"
+
+xvfb-run -a /usr/games/mupen64plus --noosd --gfx mupen64plus-video-rice.so \
+  --audio dummy --rsp mupen64plus-rsp-hle.so --sshotdir ./shots \
+  --testshots 60,300,600,1200,1800 baserom.us.z64
 ```
 
-#### Tabla de Subsistemas
+`--testshots` toma capturas en los números de frame indicados y termina — útil para saber exactamente cómo debería verse un punto dado del juego.
 
-| Subsistema | Progreso | Estado | Detalles |
-|---|:---:|:---:|---|
-| **Recompilador Estático MIPS** | `100%` | ✅ Operativo | 58 archivos C generados (`funcs_0.c` .. `funcs_57.c`) enlazados. |
-| **Planificador de Hilos OS** | `98%` | ✅ Operativo | Multihilo concurrente (Hilos 1, 3, 4, 20, 21), aislamiento Win32 TLS y colas de eventos con reintento. |
-| **Overlays Dinámicos** | `95%` | ✅ Operativo | Búsqueda por rangos de funciones y despacho en tiempo de ejecución. |
-| **Motor de Actores y Simulación** | `90%` | ✅ Operativo | Bucle completo (`func_15019130`, `func_15122AE0`, `func_15122C5C`), matrices y temporizadores activos. |
-| **Renderizador Gráfico (RT64)** | `85%` | 🟡 Activo | Backend Vulkan, mapeo de microcódigo F3DEXBG Tri4 (0x10–0x1F) y protección de vértices. |
-| **Salida de Vídeo (VI)** | `90%` | ✅ Operativo | Intercambio alternante de búferes (`0x803B7600` <-> `0x803D6300`) y presentación continua en ventana. |
-| **Entrada de Mandos** | `80%` | 🟡 Activo | Mapeo para teclado (Flechas, Espacio/X, C/Z, Enter, Shift/Q, WASD). |
-| **Subsistema de Audio** | `45%` | ⚙️ En Proceso | Colas de mensajes de audio, sincronización de hilos e interfaz SDL2 activa. |
+### Compilación y ejecución
 
-#### Tabla de Hitos
-
-| # | Hito | Estado | Logro Técnico Verificado |
-|---:|---|:---:|---|
-| 1 | Generar código C recompilado | ✅ Verificado | N64Recomp genera las 58 unidades de traducción. |
-| 2 | Compilar ejecutable nativo Windows | ✅ Verificado | Ninja + MinGW-w64 compila `Conker.exe` nativo. |
-| 3 | Cargar e iniciar ROM original | ✅ Verificado | ROM US (64MB) cargada, con verificación CIC 6105. |
-| 4 | Inicio multihilo del sistema operativo | ✅ Verificado | Hilos 1, 3, 21, 20 y 4 ejecutándose en paralelo sin bloqueos. |
-| 5 | Resolutor de overlays en tiempo de ejecución | ✅ Verificado | Saltos a bloques básicos internos resueltos con precisión. |
-| 6 | Inicialización de pipeline RT64 Vulkan | ✅ Verificado | Creación de dispositivos, buffers y texturas Vulkan segura. |
-| 7 | Retrace continuo e intercambio VI | ✅ Verificado | Intercambio de fotogramas en `0x803B7600`/`0x803D6300` despachado continuamente. |
-| 8 | Simulación de Actores y Bucle Principal | ✅ Verificado | Bucle de fotogramas, actores (`func_15122AE0`), cámaras y partículas ejecutándose a 60 FPS estables. |
-| 9 | Geometría Microcódigo Rare F3DEXBG | ⚙️ En Proceso | Decodificación completa de geometría y comandos 3D de Conker. |
-| 10 | Menús 3D interactivos y Gameplay | ⚙️ En Proceso | Navegación directa con controles en menús 3D y exploración de niveles. |
-
-### Compilación y Ejecución
-
-Desde PowerShell:
+El toolchain (MinGW-w64 + Ninja + CMake) vive dentro de la imagen Docker del proyecto, así que no hace falta instalar un compilador local.
 
 ```powershell
+# Una sola vez: construir la imagen del toolchain (ver Dockerfile)
+docker build -t conker .
+
+# Build completo (regenera los fuentes C recompilados desde la ROM — ver la advertencia abajo)
 .\build_native.bat
+
+# Rebuild incremental después de editar C++ (RT64/RSP/GBI/main.cpp) — rápido y seguro
+docker run --rm -v "${PWD}:/conker" -w /conker conker bash -c "cd recomp && cmake --build build_win --target Conker"
+Copy-Item recomp\build_win\Conker.exe .\Conker.exe -Force
+
+# Ejecutar
 .\Conker.exe .\baserom.us.z64
 ```
 
----
+> **Importante:** `build_native.bat` siempre vuelve a correr `N64Recomp` desde cero, lo que regenera `recomp/src/recompiled/funcs_*.c`. Varios de esos archivos (`funcs_31/33/4/5/52/58/7/8.c`, en especial el motor de actores en `funcs_52.c`) llevan parches hechos a mano que están commiteados directamente en los fuentes generados pero no están codificados en `tools/recomp/patch_generated.py`. Una regeneración completa los revierte en silencio, y ya causó corrupción de los registros VI/framebuffer una vez. **Preferí el comando incremental de `cmake --build` de arriba** para el trabajo del día a día, y si corrés el pipeline completo, revisá `git diff -- recomp/src/recompiled/` antes de commitear.
 
-## Project layout / Estructura del proyecto
+### Problemas conocidos
+
+**Bloqueo de render después de ~50 tareas SP** (abierto, en investigación activa)
+
+- Síntoma: la ventana del juego deja de actualizarse a mitad de la secuencia de intro; el input no tiene efecto visible.
+- `osSpTaskStartGo` sigue incrementando bien pasada la tarea #100 (la lógica del juego está viva y sigue mandando tareas de gráficos y audio).
+- El `workloadId` de RT64 se congela alrededor de la tarea #50 y nunca vuelve a avanzar, a través de miles de presentaciones VI posteriores.
+- Nunca aparece el mensaje de seguridad "`[RT64] Aborting malformed display list`" (que imprimiría después de 1.000.000 de comandos interpretados), lo cual descarta un display list corrupto en loop infinito.
+- La dirección de framebuffer del VI siempre resuelve a un `Framebuffer` rastreado (descartando un desajuste de dirección entre los buffers ping-pong), y el envío de triángulos se ve estructuralmente sano (viewport, z-buffer, culling, todo razonable).
+- Teoría de trabajo: el thread consumidor de tareas gráficas de RT64 (`WindowHandler::runTask` en `recomp/src/main.cpp`, alimentado por la cola de tareas SP) está bloqueado en una primitiva de sincronización interna — lo más probable, un fence/semáforo de Vulkan compartido con el thread de presentación. Hace falta trazado a nivel Vulkan (validation layers, o instrumentar las condiciones de espera de la cola de tareas de RT64) para confirmarlo.
+
+Si retomás esto: los `printf` de diagnóstico agregados en `rt64_rsp.cpp` (`drawIndexedTri`), `rt64_rdp.cpp` (`setColorImage`) y `rt64_present_queue.cpp` (`threadPresent`) ya están puestos y limitados en frecuencia; volver a correr el build y buscar `RT64 Present`, `RT64 RDP` y `osSpTaskStartGo` en `conker_run.log` reproduce la evidencia de arriba.
+
+### Estructura del proyecto
 
 ```text
 conker-master/
-├── recomp/                  Native port and runtime / Port y runtime nativos
-│   ├── N64ModernRuntime/    Ultramodern and librecomp
-│   ├── rt64/                Graphics backend / Backend gráfico
-│   └── src/recompiled/      Generated C sources / Código C generado
-├── tools/                   Recompilation tools / Herramientas
-├── build_native.bat         Reproducible build / Compilación reproducible
+├── recomp/                  Port nativo y runtime
+│   ├── N64ModernRuntime/    Runtime Ultramodern y librecomp (syscalls HLE)
+│   ├── rt64/                Backend gráfico Vulkan/D3D12 RT64
+│   └── src/recompiled/      Fuentes C generados (ver la advertencia en Problemas Conocidos)
+├── tools/                   N64Recomp, splat, y otras herramientas de recompilación
+├── build_native.bat         Build completo reproducible (regenera los fuentes C)
 └── README.md
 ```
 
-## Credits / Créditos
+### Créditos
 
-- Rare — original game and technology / juego y tecnología originales.
-- [N64Recomp](https://github.com/Mr-Wiseguy/N64Recomp) — static recompilation / recompilación estática.
-- [RT64](https://github.com/rt64/rt64) — modern N64 renderer / renderizador moderno para N64.
-- [Conker decompilation project](https://github.com/mkst/conker) — analysis and tooling / análisis y herramientas.
+- Rare — juego y tecnología originales.
+- [N64Recomp](https://github.com/N64Recomp/N64Recomp) — toolchain de recompilación estática.
+- [N64ModernRuntime](https://github.com/Mr-Wiseguy/N64ModernRuntime) — runtime Ultramodern y librecomp.
+- [RT64](https://github.com/rt64/rt64) — renderizador moderno para N64.
+- [GLideN64](https://github.com/gonetz/GLideN64) — implementación de referencia del microcódigo custom `F3DEX2CBFD` de Conker, usada para validar el soporte F3DEXBG de este port.
 
-## Legal notice / Aviso legal
+### Aviso legal
 
-This repository must not contain the game ROM or copyrighted game assets. You must provide your own legally obtained copy.
-
-Este repositorio no debe contener la ROM ni recursos con copyright del juego. Debes proporcionar tu propia copia obtenida legalmente.
+Este repositorio no debe contener la ROM ni recursos con copyright del juego. Debés proporcionar tu propia copia obtenida legalmente.
