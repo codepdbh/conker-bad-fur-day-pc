@@ -256,6 +256,13 @@ namespace RT64 {
             (colorImage.width != width) ||
             (colorImage.address != newAddress))
         {
+            static int setColorImageCount = 0;
+            setColorImageCount++;
+            if (setColorImageCount <= 40 || setColorImageCount % 50 == 0) {
+                printf("[RT64 RDP] setColorImage #%d: fmt=%u siz=%u width=%u address=0x%08X\n",
+                    setColorImageCount, fmt, siz, width, newAddress);
+                fflush(stdout);
+            }
             colorImage.fmt = fmt;
             colorImage.siz = siz;
             colorImage.width = width;

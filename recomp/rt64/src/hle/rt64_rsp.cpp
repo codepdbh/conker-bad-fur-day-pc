@@ -1124,12 +1124,16 @@ namespace RT64 {
         }
         static int tri_count = 0;
         tri_count++;
-        if (tri_count <= 20 || tri_count % 100 == 0) {
-            printf("[RT64 GFX] drawIndexedTri #%d: (%u, %u, %u)\n", tri_count, a, b, c);
-            fflush(stdout);
-        }
         // Copy mode is not supported when drawing regular tris and crashes the hardware.
         const uint32_t cycleType = state->rdp->otherMode.cycleType();
+        if (tri_count <= 20 || tri_count % 100 == 0) {
+            const uint32_t &gm = geometryModeStack[geometryModeStackSize - 1];
+            const auto &vp = viewportStack[viewportStackSize - 1];
+            printf("[RT64 GFX] drawIndexedTri #%d: (%u, %u, %u) geomMode=0x%08X (LIGHTING=%d SHADE=%d TEXGEN=%d) cycleType=%u vpScale=(%.1f,%.1f,%.1f) vpTrans=(%.1f,%.1f,%.1f)\n",
+                tri_count, a, b, c, gm, (gm & G_LIGHTING) != 0, (gm & G_SHADE) != 0, (gm & G_TEXTURE_GEN) != 0, cycleType,
+                vp.scale.x, vp.scale.y, vp.scale.z, vp.translate.x, vp.translate.y, vp.translate.z);
+            fflush(stdout);
+        }
         assert(cycleType != G_CYC_COPY);
 
         // Don't draw anything if both tris are being culled.

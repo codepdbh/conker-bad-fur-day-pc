@@ -143,6 +143,13 @@ namespace RT64 {
             if (!viewRDRAM) {
                 viFb = fbManager.find(present.screenVI.fbAddress());
             }
+            static int presentLogCount = 0;
+            presentLogCount++;
+            if (presentLogCount <= 40 || presentLogCount % 60 == 0) {
+                printf("[RT64 Present] #%d: viewRDRAM=%d screenVI.fbAddress=0x%08X viFb=%s\n",
+                    presentLogCount, viewRDRAM ? 1 : 0, present.screenVI.fbAddress(), viFb ? "FOUND" : "MISSING");
+                fflush(stdout);
+            }
 
             Framebuffer *presentFb = viFb;
             
