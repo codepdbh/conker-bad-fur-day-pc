@@ -167,6 +167,7 @@ namespace RT64 {
         uint32_t vertexLightCount;
         uint32_t vertexLookAtIndex;
         uint32_t vertexColorPDAddress;
+        uint32_t vertexNormalBaseCBFD;
         bool fogChanged;
         bool lightsChanged;
         bool lookAtChanged;
@@ -252,6 +253,8 @@ namespace RT64 {
         void specialComputeModelViewProj();
         void setModelViewProjChanged(bool changed);
         void setVertex(uint32_t address, uint32_t vtxCount, uint32_t dstIndex);
+        void setVertexCBFD(uint32_t address, uint32_t vtxCount, uint32_t dstIndex);
+        void setVertexNormalBaseCBFD(uint32_t address);
         void setVertexPD(uint32_t address, uint32_t vtxCount, uint32_t dstIndex);
         void setVertexEXV1(uint32_t address, uint32_t vtxCount, uint32_t dstIndex);
         void setVertexColorPD(uint32_t address);

@@ -81,6 +81,7 @@ namespace RT64 {
         void tri2(State *state, DisplayList **dl);
         void quad(State *state, DisplayList **dl);
         void line3D(State *state, DisplayList **dl);
+        void tri4(State *state, DisplayList **dl);
 
         void setup(GBI *gbi);
     };

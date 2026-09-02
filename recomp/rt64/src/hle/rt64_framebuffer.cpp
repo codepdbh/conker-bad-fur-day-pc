@@ -73,7 +73,13 @@ namespace RT64 {
 
     uint32_t Framebuffer::copyRAMToNativeAndChanges(RenderWorker *worker, FramebufferChange &fbChange, const uint8_t *src, uint32_t rowStart, uint32_t rowCount, uint8_t fmt, bool invalidateTargets, const ShaderLibrary *shaderLibrary) {
         assert(worker != nullptr);
-        if (src == nullptr) {
+        if ((src == nullptr) || (width == 0) || (rowCount == 0)) {
+            // A degenerate size can reach here from the present thread's scratch
+            // framebuffer path before the VI reports a valid width/height (e.g.
+            // the first frames of a title, or a swap that races VI setup). Treat
+            // it as "nothing changed" instead of letting NativeTarget::copyFromRAM
+            // build a zero-sized buffer, which leaves readBuffer.nativeBuffer null
+            // and crashes on the formatted-view creation below.
             return 0;
         }
 

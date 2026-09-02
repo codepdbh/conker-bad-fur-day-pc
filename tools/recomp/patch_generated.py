@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Apply deterministic compatibility fixes after N64Recomp generation."""
+"""Apply deterministic compatibility fixes after N64Recomp generation.
+
+WARNING: build_native.bat always reruns N64Recomp from scratch before calling
+this script, which overwrites recomp/src/recompiled/funcs_*.c with pristine
+output. Several of those files (at least funcs_31/33/4/5/52/58/7/8.c, notably
+the actor tick engine in funcs_52.c) carry hand patches that were committed
+directly to the generated sources but were never encoded here as replace_exact
+calls. Rerunning the full build_native.bat pipeline silently reverts those
+fixes in the working tree, which previously caused garbage VI/framebuffer
+corruption once the actor engine started running. If you only need to rebuild
+after touching C++/RSP/GBI code, skip the N64Recomp + patch_generated.py step
+and just run `cmake --build build_win --target Conker` -- and always check
+`git diff -- recomp/src/recompiled/` before committing after a full rebuild.
+"""
 
 from pathlib import Path
 

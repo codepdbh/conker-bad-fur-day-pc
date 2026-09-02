@@ -31,6 +31,7 @@
 
 #include "hle/rt64_application.h"
 #include "gbi/rt64_gbi_f3dex2.h"
+#include "gbi/rt64_gbi_f3dexbg.h"
 #include "gbi/rt64_gbi_rdp.h"
 
 extern "C" uint8_t rdram[0x1000000];
@@ -213,12 +214,12 @@ public:
             // Use F3DEX2 command parser so all DisplayLists are processed.
             if (m_app->interpreter->hleGBI == nullptr) {
                 auto& fallbackGBI = m_app->interpreter->gbiManager.gbiCache[
-                    static_cast<uint32_t>(RT64::GBIUCode::F3DEX2)
+                    static_cast<uint32_t>(RT64::GBIUCode::F3DEXBG)
                 ];
                 if (fallbackGBI.ucode == RT64::GBIUCode::Unknown) {
-                    fallbackGBI.ucode = RT64::GBIUCode::F3DEX2;
+                    fallbackGBI.ucode = RT64::GBIUCode::F3DEXBG;
                     RT64::GBI_RDP::setup(&fallbackGBI, true);
-                    RT64::GBI_F3DEX2::setup(&fallbackGBI);
+                    RT64::GBI_F3DEXBG::setup(&fallbackGBI);
                     fallbackGBI.flags.NoN = true;
                 }
 
@@ -237,8 +238,30 @@ public:
 
             uint32_t dl_start = ((uint32_t)(uintptr_t)task->t.data_ptr) & 0x00FFFFFF;
             try {
-                m_app->processDisplayLists(m_rdram, dl_start, dl_start + task->t.data_size, true);
-                m_has_rendered_workload = true;
+                const uint64_t workloadIdBefore = m_app->state->workloadId;
+                // OSTask::data_size describes task data, not a reliable end
+                // pointer for the command stream. Let G_ENDDL terminate it,
+                // matching RT64's supported N64Recomp integration.
+                m_app->processDisplayLists(m_rdram, dl_start, 0, true);
+
+                // Some F3DEXBG tasks finish without exposing G_RDPFULLSYNC in
+                // the command stream consumed by the HLE parser. RT64 only
+                // submits accumulated framebuffer pairs from fullSync(), so
+                // finalize the OSTask here when the list did not do it itself.
+                if (m_app->state->workloadId == workloadIdBefore) {
+                    m_app->state->fullSync();
+                    if (dl_count <= 10 || dl_count % 60 == 0) {
+                        std::cout << "[Conker RT64] Finalized DisplayList #" << dl_count
+                                  << " at OSTask boundary (missing visible G_RDPFULLSYNC).\n" << std::flush;
+                    }
+                }
+
+                m_has_rendered_workload = (m_app->state->workloadId > workloadIdBefore);
+                if (dl_count <= 10 || dl_count % 60 == 0) {
+                    std::cout << "[Conker RT64] DisplayList #" << dl_count
+                              << " complete: workloadId=" << m_app->state->workloadId
+                              << ", presentId=" << m_app->state->presentId << "\n" << std::flush;
+                }
             } catch (const std::exception& e) {
                 std::cerr << "[Conker RT64 Warning] processDisplayLists exception: " << e.what() << "\n" << std::flush;
             } catch (...) {
@@ -251,15 +274,45 @@ public:
 
     void update_screen() override {
         const std::lock_guard<std::mutex> rt64Lock(m_rt64_mutex);
+        static uint32_t screenUpdateCount = 0;
+        screenUpdateCount++;
+        auto* vi = ultramodern::renderer::get_vi_regs();
+        if ((screenUpdateCount <= 10) || ((screenUpdateCount % 60) == 0)) {
+            std::cout << "[Conker RT64] updateScreen #" << screenUpdateCount
+                      << ": status=0x" << std::hex << (vi ? vi->VI_STATUS_REG : 0)
+                      << ", origin=0x" << (vi ? vi->VI_ORIGIN_REG : 0)
+                      << ", width=" << std::dec << (vi ? vi->VI_WIDTH_REG : 0)
+                      << ", vSync=" << (vi ? vi->VI_V_SYNC_REG : 0)
+                      << ", hStart=0x" << std::hex << (vi ? vi->VI_H_START_REG : 0)
+                      << ", vStart=0x" << (vi ? vi->VI_V_START_REG : 0)
+                      << ", xScale=0x" << (vi ? vi->VI_X_SCALE_REG : 0)
+                      << ", yScale=0x" << (vi ? vi->VI_Y_SCALE_REG : 0)
+                      << std::dec << "\n" << std::flush;
+        }
+
         if (m_app) {
             try {
                 m_app->updateScreen();
+                if ((screenUpdateCount <= 10) || ((screenUpdateCount % 60) == 0)) {
+                    std::cout << "[Conker RT64] updateScreen #" << screenUpdateCount
+                              << " complete: workloadId=" << m_app->state->workloadId
+                              << ", presentId=" << m_app->state->presentId << "\n" << std::flush;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[Conker RT64 Warning] updateScreen exception: " << e.what() << "\n" << std::flush;
             } catch (...) {
+                std::cerr << "[Conker RT64 Warning] updateScreen unknown exception caught.\n" << std::flush;
             }
         }
 
+        // RT64 owns the client area after the first graphics workload. Drawing
+        // the software VI fallback afterwards overwrites the Vulkan frame (and
+        // was the reason the stable renderer still appeared completely black).
+        if (m_has_rendered_workload) {
+            return;
+        }
+
         if (!m_hwnd || !m_rdram) return;
-        auto* vi = ultramodern::renderer::get_vi_regs();
         uint32_t origin = vi ? vi->VI_ORIGIN_REG : 0;
         uint32_t width = (vi && vi->VI_WIDTH_REG > 0 && vi->VI_WIDTH_REG <= 640) ? vi->VI_WIDTH_REG : 320;
         uint32_t height = (width >= 640) ? 480 : 240;

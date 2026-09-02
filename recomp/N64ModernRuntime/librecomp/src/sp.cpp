@@ -15,6 +15,15 @@ extern "C" void osSpTaskStartGo_recomp(uint8_t* rdram, recomp_context* ctx) {
     if (task_count < 50 || (task_count % 100 == 0)) {
         printf("[sp] osSpTaskStartGo #%d: type=%u, flags=0x%x, data_ptr=0x%08X, data_size=%u\n",
             task_count, task->t.type, task->t.flags, (uint32_t)task->t.data_ptr, (uint32_t)task->t.data_size);
+        if (task->t.type == M_GFXTASK && task_count < 10) {
+            uint32_t dl_addr = (uint32_t)task->t.data_ptr & 0x00FFFFFF;
+            printf("  [DL Dump %08X, len=%u]:\n", (uint32_t)task->t.data_ptr, (uint32_t)task->t.data_size);
+            for (uint32_t off = 0; off < task->t.data_size && off < 64; off += 8) {
+                uint32_t w0 = *(uint32_t*)(rdram + dl_addr + off);
+                uint32_t w1 = *(uint32_t*)(rdram + dl_addr + off + 4);
+                printf("    +0x%02X: %08X %08X (op=0x%02X)\n", off, w0, w1, (w0 >> 24) & 0xFF);
+            }
+        }
         fflush(stdout);
     }
     task_count++;

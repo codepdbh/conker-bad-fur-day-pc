@@ -337,6 +337,7 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3d.cpp"
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex.cpp"
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex2.cpp"
+    "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dexbg.cpp"
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dgolden.cpp"
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dpd.cpp"
     "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dwave.cpp"

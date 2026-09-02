@@ -219,11 +219,6 @@ namespace RT64 {
             gbi->map[F3DEX2_G_TRI1] = &tri1;
             gbi->map[F3DEX2_G_TRI2] = &tri2;
             gbi->map[F3DEX2_G_QUAD] = &quad;
-            // F3DEXBG uses the whole 0x10-0x1F opcode range for Tri4. Keep
-            // opcode 0x07 as the standard F3DEX2 quad command.
-            for (uint32_t opcode = 0x10; opcode <= 0x1F; opcode++) {
-                gbi->map[opcode] = &tri4;
-            }
             gbi->map[0x0A] = &GBI_EXTENDED::noOpHook;
             gbi->map[F3DEX2_G_LINE3D] = &line3D;
             gbi->map[G_RDPSETOTHERMODE] = &setOtherMode;

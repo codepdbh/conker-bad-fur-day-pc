@@ -81,6 +81,7 @@ namespace RT64 {
         vertexLightCount = 0;
         vertexLookAtIndex = 0;
         vertexColorPDAddress = 0;
+        vertexNormalBaseCBFD = 0;
         fog.mul = 0.0f;
         fog.offset = 0.0f;
         lookAt.x = { 0.0f, 0.0f, 0.0f };
@@ -374,6 +375,34 @@ namespace RT64 {
         const Vertex *dlVerts = reinterpret_cast<const Vertex *>(state->fromRDRAM(rdramAddress));
         memcpy(&vertices[dstIndex], dlVerts, sizeof(Vertex) * vtxCount);
         setVertexCommon<true, sizeof(Vertex)>(rdramAddress, dstIndex, dstIndex + vtxCount);
+    }
+
+    void RSP::setVertexCBFD(uint32_t address, uint32_t vtxCount, uint32_t dstIndex) {
+        if ((dstIndex >= RSP_MAX_VERTICES) || ((dstIndex + vtxCount) > RSP_MAX_VERTICES)) {
+            return;
+        }
+
+        const uint32_t rdramAddress = fromSegmentedMasked(address);
+        const Vertex *dlVerts = reinterpret_cast<const Vertex *>(state->fromRDRAM(rdramAddress));
+        memcpy(&vertices[dstIndex], dlVerts, sizeof(Vertex) * vtxCount);
+
+        const uint32_t geometryMode = geometryModeStack[geometryModeStackSize - 1];
+        if ((geometryMode & G_LIGHTING) && (vertexNormalBaseCBFD != 0)) {
+            for (uint32_t i = dstIndex; i < (dstIndex + vtxCount); i++) {
+                Vertex &vertex = vertices[i];
+                const uint8_t alpha = vertex.color.a;
+                vertex.normal.x = int8_t(*state->fromRDRAM((vertexNormalBaseCBFD + i * 2 + 0) ^ 0x3));
+                vertex.normal.y = int8_t(*state->fromRDRAM((vertexNormalBaseCBFD + i * 2 + 1) ^ 0x3));
+                vertex.normal.z = int8_t(vertex.flag & 0xFF);
+                vertex.normal.a = int8_t(alpha);
+            }
+        }
+
+        setVertexCommon<true, sizeof(Vertex)>(rdramAddress, dstIndex, dstIndex + vtxCount);
+    }
+
+    void RSP::setVertexNormalBaseCBFD(uint32_t address) {
+        vertexNormalBaseCBFD = fromSegmentedMasked(address);
     }
     
     void RSP::setVertexPD(uint32_t address, uint32_t vtxCount, uint32_t dstIndex) {
@@ -752,13 +781,41 @@ namespace RT64 {
         auto &lookAtIndices = workload.drawData.lookAtIndices;
         auto &modifyPosUints = workload.drawData.modifyPosUints;
         auto &posScreen = workload.drawData.posScreen;
+        auto &posFloats = workload.drawData.posFloats;
+        auto &velFloats = workload.drawData.velFloats;
+        auto &viewProjIndices = workload.drawData.viewProjIndices;
+        auto &worldIndices = workload.drawData.worldIndices;
+        auto &posTransformed = workload.drawData.posTransformed;
         uint32_t globalIndex = indices[dstIndex];
+
+        const auto hasVertexData = [&](uint32_t index) {
+            const size_t vertexIndex = size_t(index);
+            return (posFloats.size() >= (vertexIndex + 1) * 3) &&
+                (velFloats.size() >= (vertexIndex + 1) * 3) &&
+                (normColBytes.size() >= (vertexIndex + 1) * 4) &&
+                (tcFloats.size() >= (vertexIndex + 1) * 2) &&
+                (tcVelFloats.size() >= (vertexIndex + 1) * 2) &&
+                (viewProjIndices.size() > vertexIndex) &&
+                (worldIndices.size() > vertexIndex) &&
+                (fogIndices.size() > vertexIndex) &&
+                (lightIndices.size() > vertexIndex) &&
+                (lightCounts.size() > vertexIndex) &&
+                (lookAtIndices.size() > vertexIndex) &&
+                (posTransformed.size() > vertexIndex) &&
+                (posScreen.size() > vertexIndex);
+        };
+
+        if (!hasVertexData(globalIndex)) {
+            static uint32_t invalidModifyCount = 0;
+            if (invalidModifyCount < 16) {
+                fprintf(stderr, "[RT64 GFX] Ignoring ModifyVtx for unloaded vertex: slot=%u global=%u attribute=0x%02X\n",
+                    uint32_t(dstIndex), globalIndex, uint32_t(dstAttribute));
+            }
+            invalidModifyCount++;
+            return;
+        }
+
         if (used[dstIndex]) {
-            auto &posFloats = workload.drawData.posFloats;
-            auto &velFloats = workload.drawData.velFloats;
-            auto &viewProjIndices = workload.drawData.viewProjIndices;
-            auto &worldIndices = workload.drawData.worldIndices;
-            auto &posTransformed = workload.drawData.posTransformed;
             const uint32_t newIndex = workload.drawData.vertexCount();
             posFloats.emplace_back(posFloats[globalIndex * 3 + 0]);
             posFloats.emplace_back(posFloats[globalIndex * 3 + 1]);
@@ -1065,6 +1122,12 @@ namespace RT64 {
         if (!rawGlobalIndices && ((a >= RSP_MAX_VERTICES) || (b >= RSP_MAX_VERTICES) || (c >= RSP_MAX_VERTICES))) {
             return;
         }
+        static int tri_count = 0;
+        tri_count++;
+        if (tri_count <= 20 || tri_count % 100 == 0) {
+            printf("[RT64 GFX] drawIndexedTri #%d: (%u, %u, %u)\n", tri_count, a, b, c);
+            fflush(stdout);
+        }
         // Copy mode is not supported when drawing regular tris and crashes the hardware.
         const uint32_t cycleType = state->rdp->otherMode.cycleType();
         assert(cycleType != G_CYC_COPY);
@@ -1129,7 +1192,6 @@ namespace RT64 {
             globalIndices[0] = indices[a];
             globalIndices[1] = indices[b];
             globalIndices[2] = indices[c];
-            used[a] = used[b] = used[c] = true;
         }
 
         const uint32_t vertexCount = uint32_t(workload.drawData.vertexCount());
@@ -1144,6 +1206,9 @@ namespace RT64 {
         }
 
         // Indicates the vertex has been used in a tri. Whatever routines modify the vertex afterwards must use a new index instead.
+        if (!rawGlobalIndices) {
+            used[a] = used[b] = used[c] = true;
+        }
 
         for (int i = 0; i < 3; i++) {
             // TODO: Figure out how to handle texcoord tracking on TEXGEN cases.

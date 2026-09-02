@@ -24,6 +24,7 @@ namespace RT64 {
         F3DWAVE,
         F3DEX,
         F3DEX2,
+        F3DEXBG,
         F3DZEX2,
         S2DEX,
         S2DEX2,

@@ -13,6 +13,7 @@
 #include "rt64_gbi_f3dpd.h"
 #include "rt64_gbi_f3dex.h"
 #include "rt64_gbi_f3dex2.h"
+#include "rt64_gbi_f3dexbg.h"
 #include "rt64_gbi_f3dwave.h"
 #include "rt64_gbi_f3dzex2.h"
 #include "rt64_gbi_l3dex2.h"
@@ -411,11 +412,11 @@ namespace RT64 {
                 return nullptr;
             }
 
-            GBI &fallback = gbiCache[uint32_t(GBIUCode::F3DEX2)];
+            GBI &fallback = gbiCache[uint32_t(GBIUCode::F3DEXBG)];
             if (fallback.ucode == GBIUCode::Unknown) {
-                fallback.ucode = GBIUCode::F3DEX2;
+                fallback.ucode = GBIUCode::F3DEXBG;
                 GBI_RDP::setup(&fallback, true);
-                GBI_F3DEX2::setup(&fallback);
+                GBI_F3DEXBG::setup(&fallback);
             }
             fallback.flags.NoN = true;
             return &fallback;
@@ -514,6 +515,9 @@ namespace RT64 {
                 break;
             case GBIUCode::F3DEX2:
                 GBI_F3DEX2::setup(&gbi);
+                break;
+            case GBIUCode::F3DEXBG:
+                GBI_F3DEXBG::setup(&gbi);
                 break;
             case GBIUCode::F3DZEX2:
                 GBI_F3DZEX2::setup(&gbi);
