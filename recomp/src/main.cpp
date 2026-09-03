@@ -27,6 +27,7 @@
 #include <windows.h>
 #include <unknwn.h>
 #include <oleauto.h>
+#include <tlhelp32.h>
 #endif
 
 #include "hle/rt64_application.h"
@@ -196,9 +197,9 @@ public:
         const std::lock_guard<std::mutex> rt64Lock(m_rt64_mutex);
         static int dl_count = 0;
         dl_count++;
-        if (dl_count <= 10 || dl_count % 60 == 0) {
-            std::cout << "[Conker GFX] Processing DisplayList #" << dl_count << " (type: " << task->t.type 
-                      << ", data: 0x" << std::hex << (uint32_t)(uintptr_t)task->t.data_ptr 
+        if (dl_count <= 200) {
+            std::cout << "[Conker GFX] Processing DisplayList #" << dl_count << " (type: " << task->t.type
+                      << ", data: 0x" << std::hex << (uint32_t)(uintptr_t)task->t.data_ptr
                       << ", size: 0x" << task->t.data_size << std::dec << ")\n" << std::flush;
         }
 
@@ -250,14 +251,14 @@ public:
                 // finalize the OSTask here when the list did not do it itself.
                 if (m_app->state->workloadId == workloadIdBefore) {
                     m_app->state->fullSync();
-                    if (dl_count <= 10 || dl_count % 60 == 0) {
+                    if (dl_count <= 200) {
                         std::cout << "[Conker RT64] Finalized DisplayList #" << dl_count
                                   << " at OSTask boundary (missing visible G_RDPFULLSYNC).\n" << std::flush;
                     }
                 }
 
                 m_has_rendered_workload = (m_app->state->workloadId > workloadIdBefore);
-                if (dl_count <= 10 || dl_count % 60 == 0) {
+                if (dl_count <= 200) {
                     std::cout << "[Conker RT64] DisplayList #" << dl_count
                               << " complete: workloadId=" << m_app->state->workloadId
                               << ", presentId=" << m_app->state->presentId << "\n" << std::flush;
@@ -415,6 +416,107 @@ static LONG WINAPI VectoredCrashHandler(PEXCEPTION_POINTERS pExceptionInfo) {
         fflush(stderr);
     }
     return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
+#ifdef _WIN32
+// One-shot diagnostic: suspend every other thread in the process, capture its
+// instruction pointer (and a few return addresses off its stack), then resume
+// it. Used to find out where a thread is stuck when it stops making progress
+// (e.g. the graphics-task-submitting thread going silent) without needing an
+// external debugger attached. Resolve the printed addresses offline with
+// addr2line against a matching -g build.
+static void dump_all_thread_rips(const char* reason) {
+    DWORD currentProcessId = GetCurrentProcessId();
+    DWORD currentThreadId = GetCurrentThreadId();
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "[Watchdog] Failed to snapshot threads (reason=%s)\n", reason);
+        return;
+    }
+
+    fprintf(stderr, "[Watchdog] ==== Thread RIP dump (%s) ==== Module base: 0x%p\n", reason, (void*)GetModuleHandle(NULL));
+    THREADENTRY32 te{};
+    te.dwSize = sizeof(te);
+    if (Thread32First(snapshot, &te)) {
+        do {
+            if (te.dwSize < (FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID))) {
+                continue;
+            }
+            if (te.th32OwnerProcessID != currentProcessId || te.th32ThreadID == currentThreadId) {
+                continue;
+            }
+
+            HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_LIMITED_INFORMATION, FALSE, te.th32ThreadID);
+            if (hThread == NULL) {
+                continue;
+            }
+
+            // Only report threads we named ourselves (via SetThreadDescription); this
+            // filters out the dozens of anonymous driver/thread-pool workers Vulkan,
+            // COM, etc. spin up, which would otherwise drown out the game's own threads.
+            char nameBuf[256] = {0};
+            {
+                typedef HRESULT (WINAPI *pfnGetThreadDescription)(HANDLE, PWSTR*);
+                static auto pGetThreadDescription = (pfnGetThreadDescription)GetProcAddress(
+                    GetModuleHandleA("kernel32.dll"), "GetThreadDescription");
+                if (pGetThreadDescription) {
+                    PWSTR wname = nullptr;
+                    if (SUCCEEDED(pGetThreadDescription(hThread, &wname)) && wname != nullptr) {
+                        WideCharToMultiByte(CP_UTF8, 0, wname, -1, nameBuf, sizeof(nameBuf) - 1, nullptr, nullptr);
+                        LocalFree(wname);
+                    }
+                }
+            }
+            if (nameBuf[0] == '\0') {
+                CloseHandle(hThread);
+                continue;
+            }
+
+            DWORD suspendResult = SuspendThread(hThread);
+            if (suspendResult == (DWORD)-1) {
+                fprintf(stderr, "[Watchdog] Thread %lu: SuspendThread failed (err=%lu)\n", te.th32ThreadID, GetLastError());
+                CloseHandle(hThread);
+                continue;
+            }
+
+            CONTEXT ctx{};
+            ctx.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+            if (GetThreadContext(hThread, &ctx)) {
+#if defined(_M_X64) || defined(__x86_64__)
+                uint64_t rip = ctx.Rip;
+                uint64_t rsp = ctx.Rsp;
+                uint64_t rbp = ctx.Rbp;
+                fprintf(stderr, "[Watchdog] Thread %lu (%s): RIP=0x%016llX RSP=0x%016llX RBP=0x%016llX\n",
+                    te.th32ThreadID, nameBuf, (unsigned long long)rip, (unsigned long long)rsp, (unsigned long long)rbp);
+
+                // Walk a few return addresses off the stack, best-effort (no frame-pointer
+                // guarantees with -O2, but this often still finds useful addresses).
+                if (rsp != 0) {
+                    uint64_t stackWords[24];
+                    SIZE_T bytesRead = 0;
+                    if (ReadProcessMemory(GetCurrentProcess(), (LPCVOID)rsp, stackWords, sizeof(stackWords), &bytesRead)) {
+                        size_t count = bytesRead / sizeof(uint64_t);
+                        fprintf(stderr, "[Watchdog]   Stack scan (raw, may include non-return-address values):");
+                        for (size_t i = 0; i < count; i++) {
+                            fprintf(stderr, " 0x%llX", (unsigned long long)stackWords[i]);
+                        }
+                        fprintf(stderr, "\n");
+                    }
+                }
+#endif
+            }
+            else {
+                fprintf(stderr, "[Watchdog] Thread %lu: GetThreadContext failed (err=%lu)\n", te.th32ThreadID, GetLastError());
+            }
+
+            ResumeThread(hThread);
+            CloseHandle(hThread);
+        } while (Thread32Next(snapshot, &te));
+    }
+    fprintf(stderr, "[Watchdog] ==== End thread RIP dump ====\n");
+    fflush(stderr);
+    CloseHandle(snapshot);
 }
 #endif
 
@@ -772,6 +874,18 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& e) {
         std::cerr << "[Conker] Exception in preinit: " << e.what() << "\n" << std::flush;
     }
+
+#ifdef _WIN32
+    std::thread watchdog_thread([]() {
+        // Give the game plenty of time to run past the point where graphics
+        // task submission has been observed to stall (~50 tasks in).
+        std::this_thread::sleep_for(std::chrono::seconds(15));
+        dump_all_thread_rips("15s checkpoint");
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        dump_all_thread_rips("25s checkpoint");
+    });
+    watchdog_thread.detach();
+#endif
 
     std::cout << "[Conker] Spawning game start execution thread...\n" << std::flush;
     std::thread game_thread([rdram]() {

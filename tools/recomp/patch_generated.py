@@ -3,14 +3,16 @@
 
 WARNING: build_native.bat always reruns N64Recomp from scratch before calling
 this script, which overwrites recomp/src/recompiled/funcs_*.c with pristine
-output. Several of those files (at least funcs_31/33/4/5/52/58/7/8.c, notably
-the actor tick engine in funcs_52.c) carry hand patches that were committed
-directly to the generated sources but were never encoded here as replace_exact
-calls. Rerunning the full build_native.bat pipeline silently reverts those
-fixes in the working tree, which previously caused garbage VI/framebuffer
-corruption once the actor engine started running. If you only need to rebuild
-after touching C++/RSP/GBI code, skip the N64Recomp + patch_generated.py step
-and just run `cmake --build build_win --target Conker` -- and always check
+output. Several of those files (at least funcs_22/31/33/4/5/42/52/54/58/7/8.c,
+notably the actor tick engine in funcs_52.c and the runaway-loop guards in
+funcs_22/33/42/54.c -- see the README's Known Issues section) carry hand
+patches that were committed directly to the generated sources but were never
+encoded here as replace_exact calls. Rerunning the full build_native.bat
+pipeline silently reverts those fixes in the working tree, which previously
+caused garbage VI/framebuffer corruption once the actor engine started
+running. If you only need to rebuild after touching C++/RSP/GBI code, skip
+the N64Recomp + patch_generated.py step and just run
+`cmake --build build_win --target Conker` -- and always check
 `git diff -- recomp/src/recompiled/` before committing after a full rebuild.
 """
 

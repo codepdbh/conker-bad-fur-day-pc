@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdbool.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -1039,6 +1041,14 @@ RECOMP_FUNC void func_151494E0(uint8_t* rdram, recomp_context* ctx) {
 RECOMP_FUNC void func_10004074(uint8_t* rdram, recomp_context* ctx) {
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
+    // Safety net: the free-list tree walk below (L_100041C0) has no bound
+    // other than reaching a null child pointer. If the tree was corrupted by
+    // an earlier bug (this heap's block headers live right next to whatever
+    // else got overwritten by out-of-range writes elsewhere in this port),
+    // that null may never be reached, hanging this thread forever with no
+    // crash. Bail out to this function's own existing no-op return path
+    // rather than keep mutating a tree we no longer trust.
+    uint32_t freeTreeWalkGuard = 0;
     // 0x10004074: addiu       $sp, $sp, -0x30
     ctx->r29 = ADD32(ctx->r29, -0X30);
     // 0x10004078: sw          $ra, 0x14($sp)
@@ -1285,6 +1295,16 @@ L_100041A4:
     // 0x100041BC: sw          $a1, 0x0($v0)
     MEM_W(0X0, ctx->r2) = ctx->r5;
 L_100041C0:
+    freeTreeWalkGuard++;
+    if (freeTreeWalkGuard >= 10000) {
+        static bool warnedAboutRunawayTreeWalk = false;
+        if (!warnedAboutRunawayTreeWalk) {
+            fprintf(stderr, "[Conker Warning] func_10004074: free-list tree walk exceeded 10000 steps (likely a corrupted/cyclic tree), abandoning this free() to avoid hanging.\n");
+            fflush(stderr);
+            warnedAboutRunawayTreeWalk = true;
+        }
+        goto L_10004240;
+    }
     // 0x100041C0: lw          $v0, 0xC($v1)
     ctx->r2 = MEM_W(ctx->r3, 0XC);
 L_100041C4:

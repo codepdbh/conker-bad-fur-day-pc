@@ -241,6 +241,20 @@ void vi_thread_func() {
 void sp_complete() {
     uint8_t* rdram = events_context.rdram;
     std::lock_guard lock{ events_context.message_mutex };
+    static uint64_t spCompleteCount = 0;
+    spCompleteCount++;
+    if (spCompleteCount <= 60 || (spCompleteCount % 50) == 0) {
+        OSMesgQueue* mq = (events_context.sp.mq != NULLPTR) ? TO_PTR(OSMesgQueue, events_context.sp.mq) : nullptr;
+        if (mq != nullptr) {
+            fprintf(stderr, "[SP Complete] #%llu: mq=0x%08X validCount=%d msgCount=%d blocked_on_recv=0x%08X\n",
+                (unsigned long long)spCompleteCount, (uint32_t)events_context.sp.mq,
+                (int)mq->validCount, (int)mq->msgCount, (uint32_t)mq->blocked_on_recv);
+        }
+        else {
+            fprintf(stderr, "[SP Complete] #%llu: mq=NULL\n", (unsigned long long)spCompleteCount);
+        }
+        fflush(stderr);
+    }
     ultramodern::enqueue_external_message_src(events_context.sp.mq, events_context.sp.msg, false, ultramodern::EventMessageSource::Sp);
 }
 
@@ -349,6 +363,11 @@ void gfx_thread_func(uint8_t* rdram, moodycamel::LightweightSemaphore* thread_re
         if (events_context.action_queue.wait_dequeue_timed(action, 1ms)) {
             // Determine the action type and act on it
             if (const auto* task_action = std::get_if<SpTaskAction>(&action)) {
+                static uint64_t gfxActionCount = 0;
+                gfxActionCount++;
+                fprintf(stderr, "[GfxThread] SpTaskAction #%llu dequeued (type=%u)\n",
+                    (unsigned long long)gfxActionCount, task_action->task.t.type);
+                fflush(stderr);
                 // Tell the game that the RSP completed instantly. This will allow it to queue other task types, but it won't
                 // start another graphics task until the RDP is also complete. Games usually preserve the RSP inputs until the RDP
                 // is finished as well, so sending this early shouldn't be an issue in most cases.
@@ -603,6 +622,11 @@ void ultramodern::submit_rsp_task(RDRAM_ARG PTR(OSTask) task_) {
 
     // Send gfx tasks to the graphics action queue
     if (task->t.type == M_GFXTASK) {
+        static uint64_t submittedGfxCount = 0;
+        submittedGfxCount++;
+        fprintf(stderr, "[SubmitRSP] SpTaskAction #%llu enqueued (queue size approx=%zu)\n",
+            (unsigned long long)submittedGfxCount, events_context.action_queue.size_approx());
+        fflush(stderr);
         events_context.action_queue.enqueue(SpTaskAction{ *task });
     }
     // Set all other tasks as the RSP task

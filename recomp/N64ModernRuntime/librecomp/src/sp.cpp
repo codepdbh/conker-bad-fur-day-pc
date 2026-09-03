@@ -12,7 +12,7 @@ bool dump_frame = false;
 extern "C" void osSpTaskStartGo_recomp(uint8_t* rdram, recomp_context* ctx) {
     OSTask* task = TO_PTR(OSTask, ctx->r4);
     static int task_count = 0;
-    if (task_count < 50 || (task_count % 100 == 0)) {
+    if (task_count < 300 || (task_count % 100 == 0)) {
         printf("[sp] osSpTaskStartGo #%d: type=%u, flags=0x%x, data_ptr=0x%08X, data_size=%u\n",
             task_count, task->t.type, task->t.flags, (uint32_t)task->t.data_ptr, (uint32_t)task->t.data_size);
         if (task->t.type == M_GFXTASK && task_count < 10) {

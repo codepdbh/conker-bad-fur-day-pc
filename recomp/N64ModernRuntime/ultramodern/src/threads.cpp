@@ -198,7 +198,13 @@ void resume_thread(OSThread* t) {
 }
 
 void run_next_thread(RDRAM_ARG1) {
+    static uint64_t emptySpinCount = 0;
     while (ultramodern::thread_queue_empty(PASS_RDRAM ultramodern::running_queue)) {
+        emptySpinCount++;
+        if (emptySpinCount <= 20 || (emptySpinCount % 2000) == 0) {
+            fprintf(stderr, "[Scheduler] running_queue empty, spin #%llu\n", (unsigned long long)emptySpinCount);
+            fflush(stderr);
+        }
         ultramodern::wait_for_external_message_timed(PASS_RDRAM 1);
     }
 

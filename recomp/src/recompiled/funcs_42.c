@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdbool.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -16415,10 +16417,27 @@ L_1503D3FC:
     // 0x1503D404: lb          $v1, 0x0($v0)
     ctx->r3 = MEM_B(ctx->r2, 0X0);
     // 0x1503D408: bne         $s3, $v1, L_1503D3C0
-    if (ctx->r19 != ctx->r3) {
+    // Safety net: this loop scans forward looking for a 0xDF (-0x21) terminator
+    // byte in whatever buffer $a0 points to. On real hardware/reference
+    // emulation that byte is always present, but if the pointer this was
+    // called with ends up referencing data our port produced incorrectly
+    // (e.g. a text/asset buffer missing its terminator), this becomes an
+    // unbounded scan through RDRAM that hangs the thread forever with no
+    // crash and no error -- observed to freeze the entire graphics task
+    // pipeline after the intro sequence. Cap the scan distance instead of
+    // looping indefinitely; a real string is never anywhere close to this long.
+    if ((ctx->r19 != ctx->r3) && (ctx->r16 < 65536)) {
         // 0x1503D40C: nop
-    
+
             goto L_1503D3C0;
+    }
+    if (ctx->r19 != ctx->r3) {
+        static bool warnedAboutRunawayScan = false;
+        if (!warnedAboutRunawayScan) {
+            fprintf(stderr, "[Conker Warning] func_1503D368: 0xDF terminator not found within 65536 entries, aborting scan to avoid hanging.\n");
+            fflush(stderr);
+            warnedAboutRunawayScan = true;
+        }
     }
     // 0x1503D40C: nop
 

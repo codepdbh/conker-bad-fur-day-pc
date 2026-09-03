@@ -5407,7 +5407,12 @@ L_1503D0E8:
     // 0x1503D114: addiu       $s0, $s0, 0x4
     ctx->r16 = ADD32(ctx->r16, 0X4);
     // 0x1503D118: slt         $at, $s1, $t0
-    ctx->r1 = SIGNED(ctx->r17) < SIGNED(ctx->r8) ? 1 : 0;
+    // Safety net: $t0 is re-read every iteration from a fixed address, so a
+    // corrupted table length here would make this loop (and every func_1503D368/
+    // func_1503D438 call inside it) run far longer than any real string list
+    // needs to, compounding with those functions' own per-call safety caps into
+    // a multi-minute hang. Cap the iteration count directly.
+    ctx->r1 = (SIGNED(ctx->r17) < SIGNED(ctx->r8)) && (ctx->r17 < 4096) ? 1 : 0;
     // 0x1503D11C: bnel        $at, $zero, L_1503D0E8
     if (ctx->r1 != 0) {
         // 0x1503D120: lw          $t6, 0x0($s3)
@@ -5479,7 +5484,8 @@ L_1503D14C:
     // 0x1503D178: addiu       $s0, $s0, 0x4
     ctx->r16 = ADD32(ctx->r16, 0X4);
     // 0x1503D17C: sltu        $at, $s1, $t6
-    ctx->r1 = ctx->r17 < ctx->r14 ? 1 : 0;
+    // Safety net: see the matching cap on the earlier func_1503D368 loop above.
+    ctx->r1 = (ctx->r17 < ctx->r14) && (ctx->r17 < 4096) ? 1 : 0;
     // 0x1503D180: bnel        $at, $zero, L_1503D14C
     if (ctx->r1 != 0) {
         // 0x1503D184: lw          $t3, 0x0($s4)

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -27327,6 +27328,13 @@ L_151B4B64:
 RECOMP_FUNC void func_10006E00(uint8_t* rdram, recomp_context* ctx) {
     uint64_t hi = 0, lo = 0, result = 0;
     int c1cs = 0;
+    // Safety net: this is a bit-oriented (Huffman/LZ-style) decoder whose main
+    // loop runs until $fp (bit position) reaches $a2 (target output length).
+    // If it was called with a bad length or a source pointer that doesn't
+    // actually contain valid compressed data, it can decode garbage symbols
+    // forever without ever reaching that target, hanging the calling thread
+    // with no crash. Cap the number of symbols produced per call.
+    uint32_t outerLoopGuard = 0;
     // 0x10006E00: mfc1        $t3, $f16
     ctx->r11 = (int32_t)ctx->f16.u32l;
     // 0x10006E04: mfc1        $t5, $f18
@@ -27350,6 +27358,16 @@ RECOMP_FUNC void func_10006E00(uint8_t* rdram, recomp_context* ctx) {
     // 0x10006E28: lhu         $t0, 0x0($t7)
     ctx->r8 = MEM_HU(ctx->r15, 0X0);
 L_10006E2C:
+    outerLoopGuard++;
+    if (outerLoopGuard >= 4096) {
+        static bool warnedAboutRunawayDecode = false;
+        if (!warnedAboutRunawayDecode) {
+            fprintf(stderr, "[Conker Warning] func_10006E00: decode loop did not reach its target length within 4096 symbols, aborting to avoid hanging.\n");
+            fflush(stderr);
+            warnedAboutRunawayDecode = true;
+        }
+        goto L_10007088;
+    }
     // 0x10006E2C: slt         $at, $fp, $a2
     ctx->r1 = SIGNED(ctx->r30) < SIGNED(ctx->r6) ? 1 : 0;
 L_10006E30:
@@ -27746,19 +27764,43 @@ L_10007030:
     ctx->r20 = ADD32(ctx->r20, ctx->r18);
     // 0x10007068: addu        $v0, $t3, $s4
     ctx->r2 = ADD32(ctx->r11, ctx->r20);
+    {
+        // Safety net: this loop copies bytes from $t8 to $t9 until $t9 hits the
+        // exact address $v0. On real hardware/reference emulation that end
+        // pointer is always reached, but if it was computed from bad
+        // length/segment data our port produced (the same class of issue that
+        // hangs the 0xDF string-terminator scan above), $t9 can step past $v0
+        // without ever equaling it, looping forever with no crash. Rather than
+        // cap-and-continue (which would still write up to the cap's worth of
+        // bytes to addresses derived from the same bad data, corrupting
+        // whatever happens to live there -- observed to cascade into an
+        // unrelated tree-structure hang elsewhere), validate the copy span
+        // up front and skip the copy entirely if it's not sane.
+        const uint32_t copySpan = SUB32(ctx->r2, ctx->r25);
+        if (copySpan >= 65536) {
+            static bool warnedAboutRunawayCopy2 = false;
+            if (!warnedAboutRunawayCopy2) {
+                fprintf(stderr, "[Conker Warning] func_10006E00: copy span 0x%X is not sane, skipping copy to avoid corrupting memory.\n", copySpan);
+                fflush(stderr);
+                warnedAboutRunawayCopy2 = true;
+            }
+            goto L_10007080_skip_copy;
+        }
 L_1000706C:
-    // 0x1000706C: lbu         $t7, 0x0($t8)
-    ctx->r15 = MEM_BU(ctx->r24, 0X0);
-    // 0x10007070: addiu       $t9, $t9, 0x1
-    ctx->r25 = ADD32(ctx->r25, 0X1);
-    // 0x10007074: sb          $t7, -0x1($t9)
-    MEM_B(-0X1, ctx->r25) = ctx->r15;
-    // 0x10007078: bne         $t9, $v0, L_1000706C
-    if (ctx->r25 != ctx->r2) {
-        // 0x1000707C: addiu       $t8, $t8, 0x1
-        ctx->r24 = ADD32(ctx->r24, 0X1);
-            goto L_1000706C;
+        // 0x1000706C: lbu         $t7, 0x0($t8)
+        ctx->r15 = MEM_BU(ctx->r24, 0X0);
+        // 0x10007070: addiu       $t9, $t9, 0x1
+        ctx->r25 = ADD32(ctx->r25, 0X1);
+        // 0x10007074: sb          $t7, -0x1($t9)
+        MEM_B(-0X1, ctx->r25) = ctx->r15;
+        // 0x10007078: bne         $t9, $v0, L_1000706C
+        if (ctx->r25 != ctx->r2) {
+            // 0x1000707C: addiu       $t8, $t8, 0x1
+            ctx->r24 = ADD32(ctx->r24, 0X1);
+                goto L_1000706C;
+        }
     }
+L_10007080_skip_copy:
     // 0x1000707C: addiu       $t8, $t8, 0x1
     ctx->r24 = ADD32(ctx->r24, 0X1);
     // 0x10007080: j           L_10006E30
