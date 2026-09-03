@@ -16434,7 +16434,17 @@ L_1503D3FC:
     if (ctx->r19 != ctx->r3) {
         static bool warnedAboutRunawayScan = false;
         if (!warnedAboutRunawayScan) {
+            // Dump what we were actually handed, so the next step can be "find
+            // where this data comes from" instead of another guess: is the
+            // pointer itself bogus (table never populated), or is the pointer
+            // fine but the bytes behind it never got loaded/decompressed?
+            uint32_t bufAddr = (uint32_t)ctx->r18;
             fprintf(stderr, "[Conker Warning] func_1503D368: 0xDF terminator not found within 65536 entries, aborting scan to avoid hanging.\n");
+            fprintf(stderr, "[Conker Probe] func_1503D368: $a0(buffer)=0x%08X  first 32 bytes:", bufAddr);
+            for (int probeIdx = 0; probeIdx < 32; probeIdx++) {
+                fprintf(stderr, " %02X", (unsigned)MEM_BU(bufAddr, probeIdx));
+            }
+            fprintf(stderr, "\n");
             fflush(stderr);
             warnedAboutRunawayScan = true;
         }

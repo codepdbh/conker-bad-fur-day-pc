@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdbool.h>
 #include "recomp.h"
 #include "funcs.h"
 
@@ -5371,6 +5373,37 @@ L_1503D0A0:
     ctx->r16 = 0 | 0;
     // 0x1503D0E0: sw          $a2, 0x4C($sp)
     MEM_W(0X4C, ctx->r29) = ctx->r6;
+    // Relocate the table pointer itself before walking it.
+    //
+    // The loop below treats *(u32*)$s3 as an absolute pointer to an array of
+    // string pointers, and relocates each *element* via func_1503D438. But the
+    // array base is copied into that slot earlier in this function straight out
+    // of the loaded blob's header (`lw $t6, 0x8($v0)` -> `sw $t6, 0x0($s3)`) as
+    // a raw offset, and nothing in this port ever converts it to an absolute
+    // address. Observed live: *(u32*)$s3 == 0x00003954, so the loop walked
+    // low RDRAM (reading the boot code's MIPS instructions as if they were
+    // string pointers), handed func_1503D368 a pointer like 0xAC228090 backed
+    // by zeroes, and had func_1503D438 write relocated values to addresses
+    // derived from that same bogus base -- which is where the heap corruption
+    // guarded in funcs_54.c comes from.
+    //
+    // Apply the game's own relocation rule (func_1503D438: if the value is
+    // non-zero and has no bits set in 0x0F000000, it's still an offset, so add
+    // the blob base in $s2) to the base pointer as well.
+    {
+        // Only relocate a value that is still an offset. func_1503D438's own
+        // test (`value & 0x0F000000`) looks at bits 24-27, which are zero for a
+        // perfectly good KSEG0 pointer like 0x80182084 -- reusing it here
+        // double-relocates on repeat calls (0x80182084 + base wraps to
+        // 0x003007B4, which is exactly the corruption this was meant to fix).
+        // An already-absolute pointer is >= 0x80000000; a raw offset is a small
+        // value inside the blob, so require it to look like one (< 8MB) rather
+        // than relocating any non-KSEG value, which would also catch garbage.
+        uint32_t tableBase = (uint32_t)MEM_W(ctx->r19, 0X0);
+        if (tableBase != 0 && tableBase < 0x00800000u) {
+            MEM_W(0X0, ctx->r19) = ADD32(tableBase, ctx->r18);
+        }
+    }
     // 0x1503D0E4: lw          $t6, 0x0($s3)
     ctx->r14 = MEM_W(ctx->r19, 0X0);
 L_1503D0E8:
@@ -5395,6 +5428,38 @@ L_1503D0E8:
     // 0x1503D104: jal         0x1503D368
     // 0x1503D108: lw          $a0, 0x0($t9)
     ctx->r4 = MEM_W(ctx->r25, 0X0);
+    {
+        // Probe: func_1503D368 has been observed being handed a pointer well
+        // outside RDRAM (0xAC228090, backed by zeroes). Report the first time
+        // that happens along with the loop state that produced it, so we can
+        // tell "this pointer array holds garbage" apart from "we're reading
+        // past the end of a good array because the count is wrong".
+        uint32_t probePtr = (uint32_t)ctx->r4;
+        if ((probePtr & 0xFF000000u) != 0x80000000u) {
+            static bool probedBadStringPtr = false;
+            if (!probedBadStringPtr) {
+                probedBadStringPtr = true;
+                fprintf(stderr, "[Conker Probe] funcs_22 loop A: bad string ptr 0x%08X at index($s1)=%u arrayBase($t8)=0x%08X\n",
+                    probePtr, (unsigned)ctx->r17, (uint32_t)ctx->r24);
+                // Walk one level up: $t8 came from *(u32*)$s3, so dump the
+                // objects the loop is working from ($s2 is passed as $a1 to
+                // both callees, $s3 holds the table pointer, $s5 holds the
+                // entry count) to find which one is malformed.
+                fprintf(stderr, "[Conker Probe] funcs_22 loop A: $s2=0x%08X $s3=0x%08X $s4=0x%08X $s5=0x%08X\n",
+                    (uint32_t)ctx->r18, (uint32_t)ctx->r19, (uint32_t)ctx->r20, (uint32_t)ctx->r21);
+                fprintf(stderr, "[Conker Probe] funcs_22 loop A: words@$s3:");
+                for (int probeIdx = 0; probeIdx < 8; probeIdx++) {
+                    fprintf(stderr, " %08X", (uint32_t)MEM_W(ctx->r19, probeIdx * 4));
+                }
+                fprintf(stderr, "\n[Conker Probe] funcs_22 loop A: words@$s2:");
+                for (int probeIdx = 0; probeIdx < 16; probeIdx++) {
+                    fprintf(stderr, " %08X", (uint32_t)MEM_W(ctx->r18, probeIdx * 4));
+                }
+                fprintf(stderr, "\n");
+                fflush(stderr);
+            }
+        }
+    }
     func_1503D368(rdram, ctx);
         goto after_2;
     // 0x1503D108: lw          $a0, 0x0($t9)
@@ -5448,6 +5513,13 @@ L_1503D128:
     MEM_W(0X68, ctx->r29) = ctx->r10;
     // 0x1503D144: sw          $a2, 0x4C($sp)
     MEM_W(0X4C, ctx->r29) = ctx->r6;
+    // Same table-base relocation as the first loop above, for the $s4 table.
+    {
+        uint32_t tableBase = (uint32_t)MEM_W(ctx->r20, 0X0);
+        if (tableBase != 0 && tableBase < 0x00800000u) {
+            MEM_W(0X0, ctx->r20) = ADD32(tableBase, ctx->r18);
+        }
+    }
     // 0x1503D148: lw          $t3, 0x0($s4)
     ctx->r11 = MEM_W(ctx->r20, 0X0);
 L_1503D14C:

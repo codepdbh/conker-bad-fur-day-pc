@@ -27359,10 +27359,44 @@ RECOMP_FUNC void func_10006E00(uint8_t* rdram, recomp_context* ctx) {
     ctx->r8 = MEM_HU(ctx->r15, 0X0);
 L_10006E2C:
     outerLoopGuard++;
-    if (outerLoopGuard >= 4096) {
+    // Deliberately huge: this decoder handles legitimately large assets, and a
+    // too-small cap here truncates real decodes (a 512 cap broke early asset
+    // loading outright, a 4096 cap fired on a decode whose inputs probe as
+    // completely healthy). This bound exists only to stop a genuinely infinite
+    // loop, not to second-guess how much work a real decode needs.
+    if (outerLoopGuard >= 50000000u) {
         static bool warnedAboutRunawayDecode = false;
         if (!warnedAboutRunawayDecode) {
+            // This is the FIRST failure in the whole cascade (it fires before
+            // everything else in the log), so dump the decoder's inputs: which
+            // table, how long the output is meant to be, where it reads
+            // compressed bytes from and where it writes to. That distinguishes
+            // "called with bad arguments" from "arguments fine, source data
+            // never got loaded".
+            uint32_t tableAddr = (uint32_t)ctx->r4;
+            uint32_t srcAddr = (uint32_t)ctx->r23;
+            uint32_t dstAddr = (uint32_t)ctx->r11;
             fprintf(stderr, "[Conker Warning] func_10006E00: decode loop did not reach its target length within 4096 symbols, aborting to avoid hanging.\n");
+            fprintf(stderr, "[Conker Probe] func_10006E00: table($a0)=0x%08X targetLen($a2)=0x%08X $a3=0x%08X src($s7)=0x%08X dst($t3)=0x%08X bitPos($fp)=0x%08X\n",
+                tableAddr, (uint32_t)ctx->r6, (uint32_t)ctx->r7, srcAddr, dstAddr, (uint32_t)ctx->r30);
+            fprintf(stderr, "[Conker Probe] func_10006E00: src bytes:");
+            for (int probeIdx = 0; probeIdx < 24; probeIdx++) {
+                fprintf(stderr, " %02X", (unsigned)MEM_BU(srcAddr, probeIdx));
+            }
+            fprintf(stderr, "\n[Conker Probe] func_10006E00: table bytes:");
+            for (int probeIdx = 0; probeIdx < 24; probeIdx++) {
+                fprintf(stderr, " %02X", (unsigned)MEM_BU(tableAddr, probeIdx));
+            }
+            // The decoder masks its bit accumulator with values looked up from a
+            // static table at 0x8002C0C0, indexed by bit width. If that table is
+            // zeroed, every mask is 0, every symbol lookup hits entry 0, and the
+            // loop can never make progress -- which would look exactly like this.
+            fprintf(stderr, "\n[Conker Probe] func_10006E00: mask($t2 for %u bits)=0x%08X mask($t0 for %u bits)=0x%08X  maskTable@0x8002C0C0:",
+                (unsigned)ctx->r6, (uint32_t)ctx->r10, (unsigned)ctx->r7, (uint32_t)ctx->r8);
+            for (int probeIdx = 0; probeIdx < 32; probeIdx++) {
+                fprintf(stderr, " %02X", (unsigned)MEM_BU(0x8002C0C0u, probeIdx));
+            }
+            fprintf(stderr, "\n");
             fflush(stderr);
             warnedAboutRunawayDecode = true;
         }
